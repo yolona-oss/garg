@@ -11,7 +11,14 @@
 #include "main.h"
 #include "util.h"
 
+struct game {
+	long int id;
+	char name[MAX_GAME_NAME];
+	char starPoint[PATH_MAX];
+} Games[MAX_GAMES];
+
 static char gameName[MAX_FILE_NAME];
+static char gameStartPoint[MAX_GAMES][PATH_MAX];
 static char confPathes[3][MAX_FILE_NAME];
 static char excludes[MAX_EXCLUDES][MAX_FILE_NAME];
 
@@ -32,14 +39,14 @@ isDirectory(char *path)
 
 	if (stat(path, &fileStat) == -1) {
 		warn("Cant get stats of file: %s", path);
-		return -1;
-	}
-
-	if (S_ISDIR(fileStat.st_mode)) {
 		return 0;
 	}
 
-	return 1;
+	if (S_ISDIR(fileStat.st_mode)) {
+		return 1;
+	}
+
+	return 0;
 }
 
 int
@@ -49,16 +56,16 @@ isOtherDirectory(char *root, char *path)
 
 	fileName = basename(path);
 
-	if (isDirectory(path) != 0) {
-		return -1;
+	if (!isDirectory(path)) {
+		return 0;
 	}
 
 	if (strcmp(fileName, ".") == 0 || strcmp(fileName, "..") == 0 ||
 			strcmp(root, path) == 0) {
-		return 1;
+		return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 int
@@ -76,6 +83,20 @@ isExecuteble(char *path)
 {
 	if (access(path, X_OK) == 0) {
 		return 1;
+	}
+
+	return 0;
+}
+
+int
+isExcludeName(char *name)
+{
+	int i;
+
+	for (i = 0; excludes[i][0]; i++) {
+		if (strcasecmp(name, excludes[i]) == 0) {
+			return 1;
+		}
 	}
 
 	return 0;
@@ -127,6 +148,7 @@ getConfigIndex(void)
 	return n;
 }
 
+/* add default excludes */
 int
 readExcludes()
 {
@@ -143,10 +165,16 @@ readExcludes()
 
 		i = 0;
 		while (fscanf(fd, "%s\n", exclude) != EOF) {
-			if (sprintf(excludes[i++], "%s", exclude) < 0) {
+			if (sprintf(excludes[i], "%s", exclude) < 0) {
 				warn("Cant read exclude name. sprintf:");
+				continue;
 			}
+			i++;
 			printf("%s\n", excludes[i-1]);
+		}
+
+		if (i == 0) {
+			excludes[0][0] = '\0';
 		}
 
 		fclose(fd);
@@ -158,17 +186,35 @@ readExcludes()
 }
 
 int
-isExcludeName(char *name)
+getGameID()
 {
 	int i;
 
-	for (i = 0; excludes[i][0] != '\0'; i++) {
-		if (strcasecmp(name, excludes[i]) == 0) {
-			return 1;
+	for (i = 0; gameStartPoint[i][0]; i++) {
+		if (strcmp(gameName, gameStartPoint[i]) == 0) {
+			return i;
 		}
 	}
 
 	return 0;
+}
+
+int
+setStartPoint(char *path)
+{
+	int id;
+
+	if ((id=getGameID()) == 0) {
+			return 0;
+	}
+
+	if (snprintf(gameStartPoint[id], sizeof(char) * PATH_MAX,
+			"%s", path) < 0) {
+		warn("Cant write start point for: %s", gameName);
+		return 0;
+	}
+
+	return 1;
 }
 
 int
@@ -180,7 +226,7 @@ checkStartPoint(char *path)
 
 	base = basename(path);
 
-	if (gameName[0] != '\0')
+	if (gameName[0])
 	{
 		if (sprintf(sh, "%s.sh", gameName) < 0)
 			warn("sprintf:");
@@ -192,15 +238,16 @@ checkStartPoint(char *path)
 			warn("sprintf:");
 	}
 
-	char *spPattern[14] = { "start.sh", "start",
+	char *spPattern[19] = { "start.sh", "start",
 		"run.sh", "run-game.sh", "rungame.sh",
 		"run", "runit", "run-game", "rungame",
-		gameName, sh, x86_64, x64, x86 };
+		gameName, sh, x86_64, x64, x86,
+		"launcher", "launcher.sh", "launcher.x64", "launcher.x86_64", "launcher.x86" };
 
 	if (isExecuteble(path)) {
 		for (i = 0; i < 14; i++) {
 			if (strcasecmp(base, spPattern[i]) == 0) {
-				printf("\nSP: %s\n", base);
+				printf("GM: %s\tSP: %s\n", gameName, base);
 				return 1;
 			}
 		}
@@ -214,7 +261,7 @@ getPathDepth(char *path)
 {
 	int i, depth = 0;
 
-	for (i = 0; path[i] != '\0'; i++) {
+	for (i = 0; path[i]; i++) {
 		if (path[i] == '/') {
 			depth++;
 		}
@@ -242,6 +289,7 @@ searchInDir(char *root, int depth)
 
 	while ((dir = readdir(d)) != NULL)
 	{	
+		//skip excludes
 		if (isExcludeName(dir->d_name)) {
 			continue;
 		}
@@ -250,12 +298,12 @@ searchInDir(char *root, int depth)
 		{
 			getRPath(dir->d_name, root, rpath);
 
-			if (isDirectory(rpath) == 1) {
-				/* if (checkStartPoint(rpath)) { */
-				/* 	continue; */
-				/* } */
+			if (!isDirectory(rpath)) {
+				if (checkStartPoint(rpath)) {
+					continue;
+				}
 			}
-			else if (isOtherDirectory(root, rpath) == 0) {
+			else if (isOtherDirectory(root, rpath)) {
 				searchInDir(rpath, depth);
 			}
 		}
@@ -282,7 +330,7 @@ scan(char *path)
 
 	printf("Root: %s\n", rpath);
 
-	if(isDirectory(rpath)) {
+	if(!isDirectory(rpath)) {
 		warn("\"%s\": its not directory", rpath);
 		return -1;
 	}
@@ -332,6 +380,7 @@ main(int argc, char **argv)
 		die("No directory path specified");
 	}
 
+	//add check
 	sprintf(confPathes[0], "%s/%s", getenv("HOME"), ".ga-org.conf");
 	sprintf(confPathes[1], "%s/%s", getenv("HOME"), ".config/ga-org.conf");
 	if (userConf) {

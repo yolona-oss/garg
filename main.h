@@ -1,7 +1,9 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#define MAX_EXCLUDES 1000
+#define MAX_GAME_NAME 1000
+#define MAX_EXCLUDES  1000
+#define MAX_GAMES     1000
 
 extern char *argv0;
 
