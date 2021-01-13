@@ -1,0 +1,21 @@
+./game-organizier: FATAL. Cant open dir: /usr/local/games/test
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libsmime3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libplds4.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssdbm3.chk": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssutil3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssdbm3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnss3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssckbi.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libplc4.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnspr4.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libssl3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libsmime3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libplds4.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssdbm3.chk": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssutil3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssdbm3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnss3.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssckbi.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libplc4.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnspr4.so": No such file or directory
+./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libssl3.so": No such file or directory

@@ -1,14 +1,15 @@
 CC=gcc
 
-INC=
-LDFLAGS=
-LDLIBS=
+INC     =
+LDFLAGS =
+LDLIBS  = -l config #$(shell `pkg-config --libs libconfig`)
 
-CFLAGS= -c -Wall -xc -O2 $(INC)
+CFLAGS  = -g -c -Wall -xc -O2 $(INC)
+CFLAGS +=
 
-SOURCES=main.c util.c
-OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=$(shell basename `pwd`)
+SOURCES =main.c util.c
+OBJECTS =$(SOURCES:.c=.o)
+EXECUTABLE =$(shell basename `pwd`)
 
 all: options $(SOURCES) $(EXECUTABLE)
 
@@ -18,7 +19,7 @@ options:
 	@echo build options:
 	@echo "CFLAGS	= $(CFLAGS)"
 	@echo "LDFLAGS	= $(LDFLAGS)"
-	@echo "CC	= $(CC)"
+	@echo "CC	    = $(CC)"
 		
 $(EXECUTABLE): $(OBJECTS) 
 		$(CC) $(LDFLAGS) $(OBJECTS) -o $@ $(LDLIBS)
