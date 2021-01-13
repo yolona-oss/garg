@@ -1,29 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <libgen.h>
 #include <unistd.h>
+#include <string.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <regex.h>
+#include <limits.h>
 #include <sys/stat.h>
+#include <libconfig.h>
 
 #include "main.h"
 #include "util.h"
 
 struct game {
-	long int id;
-	char name[MAX_GAME_NAME];
-	char starPoint[PATH_MAX];
-} Games[MAX_GAMES];
+	int id;
+	char *name;
+	char *location;
+	char *starPoint;
+	/* char name[FILENAME_MAX]; */
+	/* char location[PATH_MAX]; */
+	/* char starPoint[PATH_MAX]; */
+} Game[MAX_GAMES];
 
-static char gameName[MAX_FILE_NAME];
-static char gameStartPoint[MAX_GAMES][PATH_MAX];
-static char confPathes[3][MAX_FILE_NAME];
-static char excludes[MAX_EXCLUDES][MAX_FILE_NAME];
+static char *confPathes[3];
+static char *exceptionName[MAX_EXCEPTIONS]; //[FILENAME_MAX];
+static char *exceptionPath[MAX_EXCEPTIONS];
 
 int
-isExist(char *path)
+isExist(const char *path)
 {
 	if (access(path, F_OK ) == 0) {
 		return 1;
@@ -33,7 +38,7 @@ isExist(char *path)
 }
 
 int
-isDirectory(char *path)
+isDirectory(const char *path)
 {
 	struct stat fileStat;
 
@@ -50,11 +55,11 @@ isDirectory(char *path)
 }
 
 int
-isOtherDirectory(char *root, char *path)
+isOtherDirectory(const char *root, const char *path)
 {
 	char *fileName;
 
-	fileName = basename(path);
+	fileName = basename((char *)path);
 
 	if (!isDirectory(path)) {
 		return 0;
@@ -69,7 +74,7 @@ isOtherDirectory(char *root, char *path)
 }
 
 int
-isDotName(char *name)
+isDotName(const char *name)
 {
 	if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
 		return 1;
@@ -79,7 +84,7 @@ isDotName(char *name)
 }
 
 int
-isExecuteble(char *path)
+isExecuteble(const char *path)
 {
 	if (access(path, X_OK) == 0) {
 		return 1;
@@ -89,47 +94,50 @@ isExecuteble(char *path)
 }
 
 int
-isExcludeName(char *name)
+isExcludeName(const char *name)
 {
-	int i;
+	int status;
+	regex_t regex;
 
-	for (i = 0; excludes[i][0]; i++) {
-		if (strcasecmp(name, excludes[i]) == 0) {
+	for (int i = 0; exceptionName[i]; i++) {
+		status = regcomp(&regex, exceptionName[i], REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
+
+		if (status) {
+			warn("regcomp:");
+			regfree(&regex);
+			continue;
+		}
+
+		status = regexec(&regex, name, 0, NULL, 0);
+		
+		if (!status) {
+			regfree(&regex);
 			return 1;
 		}
+
+		regfree(&regex);
 	}
 
 	return 0;
 }
 
-void
-setGameName(char *root, int depth)
-{
-	char rpath[PATH_MAX];
-
-	getRPath("", root, rpath);
-	if ((getPathDepth(rpath) - depth) == 1) {
-		sprintf(gameName, "%s", basename(rpath));
-	}
-}
-
 int
-getRPath(char *fileName, char *root, char *rpath)
+getRPath(const char *fileName, const char *root, char *rpath)
 {
 	char path[PATH_MAX];
 
 	if ((snprintf(path, sizeof(char) * PATH_MAX,
 			"%s/%s", root, fileName)) < 1) {
 		warn("Cant fill path:");
-		return -1;
+		return 0;
 	}
 
-	if (realpath(path, rpath) == NULL) {
-		warn("realpath:");
-		return -1;
+	if (!realpath(path, rpath)) {
+		warn("realpath: \"%s\":", path);
+		return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 int
@@ -148,106 +156,96 @@ getConfigIndex(void)
 	return n;
 }
 
-/* add default excludes */
 int
-readExcludes()
+readExceptions(const char *confPath)
 {
-	int n, i;
-	FILE *fd = NULL;
-	char exclude[MAX_FILE_NAME];
+	int i, c, ind = 0;
+	config_t cfg;
+	config_setting_t *setting, *setting_names;
 
-	if ((n = getConfigIndex()) != -1)
+	config_init(&cfg);
+
+	if (!config_read_file(&cfg, confPath)) {
+		warn("Cant read config file: %s", confPath);
+		config_destroy(&cfg);
+		return -1;
+	}
+
+	setting = config_lookup(&cfg, "exceptions");
+
+	if (setting)
 	{
-		if ((fd = fopen(confPathes[n], "r")) == NULL) {
-			warn("Cant open file: %s", confPathes[n]);
+		setting_names = config_setting_lookup(setting, "name");
+
+		if (config_setting_type(setting_names) != CONFIG_TYPE_ARRAY) {
+			config_destroy(&cfg);
 			return -1;
 		}
 
-		i = 0;
-		while (fscanf(fd, "%s\n", exclude) != EOF) {
-			if (sprintf(excludes[i], "%s", exclude) < 0) {
-				warn("Cant read exclude name. sprintf:");
-				continue;
-			}
-			i++;
-			printf("%s\n", excludes[i-1]);
+		c = config_setting_length(setting_names);
+
+		ind = 0;
+		/* default exceptions */
+		exceptionName[ind++] = "^Steam$";
+		exceptionName[ind++] = "^[.]wine\\w*";
+		exceptionName[ind++] = "^Steam$";
+
+		for (i = 0; i < c; i++) {
+			exceptionName[ind++] = strdup(config_setting_get_string_elem(setting_names, i));
 		}
-
-		if (i == 0) {
-			excludes[0][0] = '\0';
-		}
-
-		fclose(fd);
-
-		return 0;
 	}
 
-	return -1;
+	config_destroy(&cfg);
+
+	rmDupInArrOfPointers(exceptionName, ind);
+
+	return ind;
 }
 
 int
-getGameID()
+readConfig(void)
 {
-	int i;
+	int n;
 
-	for (i = 0; gameStartPoint[i][0]; i++) {
-		if (strcmp(gameName, gameStartPoint[i]) == 0) {
-			return i;
-		}
-	}
+	printf("Reading config file...\n");
 
-	return 0;
-}
-
-int
-setStartPoint(char *path)
-{
-	int id;
-
-	if ((id=getGameID()) == 0) {
-			return 0;
-	}
-
-	if (snprintf(gameStartPoint[id], sizeof(char) * PATH_MAX,
-			"%s", path) < 0) {
-		warn("Cant write start point for: %s", gameName);
+	if ((n=getConfigIndex()) == -1) {
+		warn("No config file found");
 		return 0;
+	}
+
+	if (readExceptions(confPathes[n]) == -1) {
+		warn("Cant read exceptions");
 	}
 
 	return 1;
 }
 
 int
-checkStartPoint(char *path)
+checkStartPoint(int id, const char *filePath)
 {
 	int i;
-	char *base;
-	char sh[MAX_FILE_NAME+3], x86_64[MAX_FILE_NAME+7], x64[MAX_FILE_NAME+4], x86[MAX_FILE_NAME+4];
+	char *fileName;
+	char sh[FILENAME_MAX+3], x86_64[FILENAME_MAX+7], x64[FILENAME_MAX+4], x86[FILENAME_MAX+4];
 
-	base = basename(path);
+	fileName = basename(strdup(filePath));
 
-	if (gameName[0])
-	{
-		if (sprintf(sh, "%s.sh", gameName) < 0)
-			warn("sprintf:");
-		if (sprintf(x86_64, "%s.x86_64", gameName) < 0)
-			warn("sprintf:");
-		if (sprintf(x64, "%s.x64", gameName) < 0)
-			warn("sprintf:");
-		if (sprintf(x86, "%s.x86", gameName) < 0)
-			warn("sprintf:");
-	}
+	if (sprintf(sh, "%s.sh", Game[id].name) < 0)         { warn("sprintf:"); }
+	if (sprintf(x86_64, "%s.x86_64", Game[id].name) < 0) { warn("sprintf:"); }
+	if (sprintf(x64, "%s.x64", Game[id].name) < 0)       { warn("sprintf:"); }
+	if (sprintf(x86, "%s.x86", Game[id].name) < 0)       { warn("sprintf:"); }
 
-	char *spPattern[19] = { "start.sh", "start",
+	char *spPattern[21] = { "start.sh", "start",
 		"run.sh", "run-game.sh", "rungame.sh",
 		"run", "runit", "run-game", "rungame",
-		gameName, sh, x86_64, x64, x86,
+		"runme", "runme.sh",
+		Game[id].name, sh, x86_64, x64, x86,
 		"launcher", "launcher.sh", "launcher.x64", "launcher.x86_64", "launcher.x86" };
 
-	if (isExecuteble(path)) {
+	if (isExecuteble(filePath)) {
 		for (i = 0; i < 14; i++) {
-			if (strcasecmp(base, spPattern[i]) == 0) {
-				printf("GM: %s\tSP: %s\n", gameName, base);
+			if (strcasecmp(fileName, spPattern[i]) == 0) {
+				sprintf(Game[id].starPoint, "%s", filePath);
 				return 1;
 			}
 		}
@@ -256,93 +254,173 @@ checkStartPoint(char *path)
 	return 0;
 }
 
+//try use nftw instead loop
 int
-getPathDepth(char *path)
+searchGameStartPoint(int id, const char *location)
 {
-	int i, depth = 0;
-
-	for (i = 0; path[i]; i++) {
-		if (path[i] == '/') {
-			depth++;
-		}
-	}
-	
-	return depth;
-}
-
-char *
-searchInDir(char *root, int depth)
-{
-	char *file_path = NULL;
 	char rpath[PATH_MAX];
 
 	DIR *d;
 	struct dirent *dir;
 
-	if ((d = opendir(root)) == NULL) {
-		warn("FATAL. Cant open dir: %s", root);
-		return NULL;
+	if (!(d = opendir(location))) {
+		warn("FATAL. Cant open dir: %s", location);
+		return -1;
 	}
 
-	setGameName(root, depth);
-	/* printf("GN: %s\n", gameName); */
-
-	while ((dir = readdir(d)) != NULL)
+	while ((dir = readdir(d)))
 	{	
-		//skip excludes
-		if (isExcludeName(dir->d_name)) {
+		if (isDotName(dir->d_name) || isExcludeName(dir->d_name) ||
+				!getRPath(dir->d_name, location, rpath)) {
 			continue;
 		}
 
-		if (!isDotName(dir->d_name))
-		{
-			getRPath(dir->d_name, root, rpath);
-
-			if (!isDirectory(rpath)) {
-				if (checkStartPoint(rpath)) {
-					continue;
-				}
+		if (!isDirectory(rpath)) {
+			if (checkStartPoint(id, rpath)) {
+				return 1;
 			}
-			else if (isOtherDirectory(root, rpath)) {
-				searchInDir(rpath, depth);
-			}
+		}
+		else if (isOtherDirectory(location, rpath)) {
+			searchGameStartPoint(id, rpath);
 		}
 	}
 
 	if (closedir(d) == -1) {
-		warn("FATAL. Cant close dir: %s", root);
-		return NULL;
+		warn("FATAL. Cant close dir: %s", location);
+		return -1;
 	}
 	
-	return file_path;
+	return 0;
 }
 
 int
-scan(char *path)
+findGameStartPoint(int gc)
 {
-	int entries_count = 0;
+	int i;
+
+	printf("Finding start point...\n");
+
+	for (i = 0; i <= gc; i++)
+	{
+		if (searchGameStartPoint(i, Game[i].location) != 1) {
+			/* printf("No start point found in \"%s\"\n", Game[i].location); */
+			;
+		}
+
+		printf("\r%d/%d", i, gc);
+		fflush(stdout);
+	}
+
+	return i;
+}
+
+int
+findGameLocations(const char *path)
+{
+	int gc;
 	char rpath[PATH_MAX];
 
-	if (realpath(path, rpath) == NULL) {
-		warn("realpath:");
+	DIR *d;
+	struct dirent *dir;
+
+	printf("Radding locations of games...\n");
+
+	if (!(d = opendir(path))) {
+		warn("FATAL. Cant open dir: %s", path);
 		return -1;
 	}
 
-	printf("Root: %s\n", rpath);
+	gc = 0;
+	while ((dir = readdir(d)))
+	{	
+		if (isDotName(dir->d_name) || isExcludeName(dir->d_name) ||
+				!getRPath(dir->d_name, path, rpath)) {
+			continue;
+		}
+
+		if (isDirectory(rpath)) {
+			Game[gc].id = gc;
+			sprintf(Game[gc].location, "%s", rpath);
+			sprintf(Game[gc].name, "%s", basename(rpath));
+			gc++;
+		}
+	}
+
+	if (closedir(d) == -1) {
+		warn("FATAL. Cant close dir: %s", path);
+		return -1;
+	}
+
+	return gc - 1;
+}
+
+int
+readGameEntryFromCache(const char *cachePath)
+{
+
+	return 1;
+}
+
+int
+writeGameEntryToCache(const char *cachePath)
+{
+
+	return 1;
+}
+
+int
+editGameEntry(int id, const char *name, const char *location, const char *startPoint)
+{
+	if (id < 0) {
+		warn("ID of game entry is out of range");
+		return -1;
+	}
+
+	if (name) {
+		sprintf(Game[id].name, "%s", name);
+	}
+
+	if (location) {
+		sprintf(Game[id].location, "%s", location);
+	}
+
+	if (startPoint) {
+		sprintf(Game[id].starPoint, "%s", startPoint);
+	}
+
+	return 1;
+}
+
+int
+scan(const char *path)
+{
+	int gc;
+	char rpath[PATH_MAX];
+
+	if (!getRPath("", path, rpath)) {
+		return -1;
+	}
 
 	if(!isDirectory(rpath)) {
 		warn("\"%s\": its not directory", rpath);
 		return -1;
 	}
 
-	readExcludes();
-	searchInDir(rpath,  getPathDepth(rpath));
+	readConfig();
+	if ((gc = findGameLocations(path)) <= 0) { 
+		warn("No one dir were found in: \"%s\"", path);
+	}
+	findGameStartPoint(gc);
 
-	return entries_count;
+	for (int i = 0; i < gc; i++) {
+		printf("id          - %d\ngame        - %s\nlocation    - %s\nstart point - %s\n\n", i, Game[i].name, Game[i].location, Game[i].starPoint);
+	}
+
+	return gc;
 }
 
 static void
-usage()
+usage(void)
 {
 	die("[-c|--config] <DIR>(<DIR>...)");
 }
@@ -371,21 +449,25 @@ main(int argc, char **argv)
 			} else if (strcmp(*argv, "help") == 0){
 				usage();
 			} else {
+				warn("Unknown argument: \"%s\"", *argv);
 				usage();
 			}
 	}
 
 	if (! *argv) {
+		warn("No directory path specified");
 		usage();
-		die("No directory path specified");
 	}
 
-	//add check
-	sprintf(confPathes[0], "%s/%s", getenv("HOME"), ".ga-org.conf");
-	sprintf(confPathes[1], "%s/%s", getenv("HOME"), ".config/ga-org.conf");
-	if (userConf) {
-		sprintf(confPathes[2], "%s", userConf);
-	}
+	char tmp[PATH_MAX];
+
+	sprintf(tmp, "%s/%s", getenv("HOME"), ".ga-org.conf");
+	confPathes[0] = tmp;
+
+	sprintf(tmp, "%s/%s", getenv("HOME"), ".config/ga-org.conf");
+	confPathes[1] = tmp;
+
+	confPathes[2] = userConf;
 
 	//add multi path option
 	scan(*argv);

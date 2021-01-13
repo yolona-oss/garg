@@ -1,24 +1,35 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#define MAX_GAME_NAME 1000
-#define MAX_EXCLUDES  1000
-#define MAX_GAMES     1000
+#define MAX_EXCEPTIONS  1000
+#define MAX_GAMES       1000
 
 extern char *argv0;
 
-int isDirectory(char *path);
-int isOtherDirectory(char *path, char *root);
-int isDotName(char *name);
-int isExecuteble(char *path);
+int isExist(const char *path);
+int isDirectory(const char *path);
+int isOtherDirectory(const char *path, const char *root);
+int isDotName(const char *name);
+int isExecuteble(const char *path);
+int isExcludeName(const char *name);
 
-int getRPath(char *filename, char *root, char *rpath);
-int getPathDepth(char *path);
+int getRPath(const char *filename, const char *root, char *rpath);
+int getConfigIndex(void);
 
-int checkStartPoint(char *path);
+int readExceptions(const char *confPath);
+int readConfig();
+int readGameEntryFromCache(const char *cachePath); //!!
 
-char *searchInDir(char *root, int depth);
-int scan(char *path);
+int writeGameEntryToCache(const char *cachePath); //!!
+
+int checkStartPoint(int id, const char *file);
+
+int editGameEntry(int id, const char *name, const char *location, const char *startPoint);
+
+int findGameStartPoint(int gc);
+int searchGameStartPoint(int id, const char *location);
+int findGameLocations(const char *path);
+int scan(const char *path);
 
 static void usage();
 
