@@ -1,21 +1,95 @@
-./game-organizier: FATAL. Cant open dir: /usr/local/games/test
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libsmime3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libplds4.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssdbm3.chk": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssutil3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssdbm3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnss3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnssckbi.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libplc4.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libnspr4.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/1d/libssl3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libsmime3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libplds4.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssdbm3.chk": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssutil3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssdbm3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnss3.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnssckbi.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libplc4.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libnspr4.so": No such file or directory
-./game-organizier: realpath: "/usr/local/games/CreeperWorld/runtimes/air/linux/Adobe AIR/Versions/1.0/Resources/nss3/0d/libssl3.so": No such file or directory
+prog: stat: "lost+found": No such file or directory
+prog: stat: "installation": No such file or directory
+prog: stat: "fez": No such file or directory
+prog: stat: "factorio": No such file or directory
+prog: stat: "else Heart Break": No such file or directory
+prog: stat: "addons": No such file or directory
+prog: stat: "Wizard of Legend": No such file or directory
+prog: stat: "West of Loathing": No such file or directory
+prog: stat: "Warhammer.40.000.Dark.Crusade": No such file or directory
+prog: stat: "VA 11 Hall A Cyberpunk Bartender Action": No such file or directory
+prog: stat: "Universe Sandbox 2": No such file or directory
+prog: stat: "Undertale": No such file or directory
+prog: stat: "Under wine": No such file or directory
+prog: stat: "Two Point Hospital": No such file or directory
+prog: stat: "Transistor": No such file or directory
+prog: stat: "To The Moon": No such file or directory
+prog: stat: "This War Of Mine": No such file or directory
+prog: stat: "The Whispered World Special Edition": No such file or directory
+prog: stat: "The Binding of Isaac Rebirth": No such file or directory
+prog: stat: "TeleglitchDME": No such file or directory
+prog: stat: "Tangledeep": No such file or directory
+prog: stat: "Tacoma (05.09.18)": No such file or directory
+prog: stat: "Sunless Skies": No such file or directory
+prog: stat: "Sunless Sea": No such file or directory
+prog: stat: "Sundered": No such file or directory
+prog: stat: "Sublevel Zero": No such file or directory
+prog: stat: "Streets of Rogue": No such file or directory
+prog: stat: "Stellaris": No such file or directory
+prog: stat: "Steam": No such file or directory
+prog: stat: "Starbound": No such file or directory
+prog: stat: "Silence": No such file or directory
+prog: stat: "Shovel Knight Treasure Trove": No such file or directory
+prog: stat: "Sheltered": No such file or directory
+prog: stat: "Satellite Reign": No such file or directory
+prog: stat: "Sally Face": No such file or directory
+prog: stat: "SHENZHEN IO (Linux)": No such file or directory
+prog: stat: "RiskOfRain": No such file or directory
+prog: stat: "RimWorld2150Linux": No such file or directory
+prog: stat: "Return of the Obra Dinn": No such file or directory
+prog: stat: "Pyre": No such file or directory
+prog: stat: "Prison Architect": No such file or directory
+prog: stat: "Planet Nomads": No such file or directory
+prog: stat: "Party Hard": No such file or directory
+prog: stat: "PartDatabase.cfg": No such file or directory
+prog: stat: "Objects In Space": No such file or directory
+prog: stat: "NightofRevenge_ver0.28": No such file or directory
+prog: stat: "NEO Scavenger": No such file or directory
+prog: stat: "Mythic Manor-0.9.0": No such file or directory
+prog: stat: "Mother Russia Bleeds": No such file or directory
+prog: stat: "Momodora Reverie Under the Moonlight": No such file or directory
+prog: stat: "MOBD": No such file or directory
+prog: stat: "MHRD": No such file or directory
+prog: stat: "Kerbal Space Program 1.6": No such file or directory
+prog: stat: "Kerbal Space Program 1.11": No such file or directory
+prog: stat: "KSP.log": No such file or directory
+prog: stat: "Invisible Inc": No such file or directory
+prog: stat: "InnerSpace": No such file or directory
+prog: stat: "Iconoclasts": No such file or directory
+prog: stat: "Hyper Light Drifter": No such file or directory
+prog: stat: "Human Resource Machine": No such file or directory
+prog: stat: "Hotline Miami 2 Wrong Number": No such file or directory
+prog: stat: "Hotline Miami": No such file or directory
+prog: stat: "Hollow Knight": No such file or directory
+prog: stat: "Harem_Hotel-v0.8.1-pc": No such file or directory
+prog: stat: "H-Rescue": No such file or directory
+prog: stat: "Frozen Synapse": No such file or directory
+prog: stat: "Fallout New Vegas setup": No such file or directory
+prog: stat: "FAR - Lone Sails": No such file or directory
+prog: stat: "Epistory - Typing Chronicles": No such file or directory
+prog: stat: "Enter the Gungeon": No such file or directory
+prog: stat: "Duskers": No such file or directory
+prog: stat: "Distrust": No such file or directory
+prog: stat: "Deponia": No such file or directory
+prog: stat: "Death Road to Canada": No such file or directory
+prog: stat: "Darkest Dungeon": No such file or directory
+prog: stat: "DarkMagic-V.0.6.1-pc": No such file or directory
+prog: stat: "Cryptark": No such file or directory
+prog: stat: "CreeperWorld2": No such file or directory
+prog: stat: "CreeperWorld": No such file or directory
+prog: stat: "Crawl": No such file or directory
+prog: stat: "Ceres(linux)": No such file or directory
+prog: stat: "Celeste": No such file or directory
+prog: stat: "Caves of Qud": No such file or directory
+prog: stat: "Besiege": No such file or directory
+prog: stat: "BackToBed": No such file or directory
+prog: stat: "AxiomVerge": No such file or directory
+prog: stat: "Arcanum": No such file or directory
+prog: stat: "Antichamber": No such file or directory
+prog: stat: "Airships Conquer the Skies": No such file or directory
+prog: stat: "AegisDefenders": No such file or directory
+prog: stat: "ATOM RPG": No such file or directory
+prog: stat: ".wine4common": No such file or directory
+prog: stat: ".wine": No such file or directory
+prog: stat: ".vifm-Trash-1000": No such file or directory
+prog: stat: ".update-timestamp": No such file or directory

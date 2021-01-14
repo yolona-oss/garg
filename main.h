@@ -28,7 +28,7 @@ int checkStartPoint(int id, const char *file);
 int editGameEntry(int id, const char *name, const char *location, const char *startPoint);
 
 int findGameStartPoint(int gc);
-int searchGameStartPoint(int id, const char *location);
+char *searchGameStartPoint(int id, const char *location);
 int findGameLocations(const char *path, int id);
 int scan(const char *path);
 

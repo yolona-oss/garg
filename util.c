@@ -22,6 +22,8 @@ verr(const char *fmt, va_list ap)
 	} else {
 		fputc('\n', stderr);
 	}
+
+	fflush(stdout);
 }
 
 void

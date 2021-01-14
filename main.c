@@ -22,8 +22,8 @@ struct game {
 
 static char *confPathes[3];
 static char *exceptionName[MAX_EXCEPTIONS];
-static char *exceptionPath[MAX_EXCEPTIONS];
-static char *inclusions[MAX_INCLUSIONS];
+/* static char *exceptionPath[MAX_EXCEPTIONS]; */
+/* static char *inclusions[MAX_INCLUSIONS]; */
 
 int
 isExist(const char *path)
@@ -55,10 +55,6 @@ isDirectory(const char *path)
 int
 isOtherDirectory(const char *root, const char *path)
 {
-	char *fileName;
-
-	fileName = basename(strdup(path));
-
 	if (!isDirectory(path)) {
 		return 0;
 	}
@@ -244,7 +240,6 @@ checkStartPoint(int id, const char *filePath)
 	if (isExecuteble(filePath)) {
 		for (i = 0; i < 14; i++) {
 			if (strcasecmp(fileName, spPattern[i]) == 0) {
-				editGameEntry(id, NULL, NULL, strdup(filePath));
 				return 1;
 			}
 		}
@@ -254,17 +249,19 @@ checkStartPoint(int id, const char *filePath)
 }
 
 //try use nftw instead loop
-int
+char *
 searchGameStartPoint(int id, const char *location)
 {
 	char rpath[PATH_MAX];
+	char *sp = NULL;
+	/* char *sp = (char *)malloc(PATH_MAX+1); */
 
 	DIR *d;
 	struct dirent *dir;
 
 	if (!(d = opendir(location))) {
-		warn("FATAL. Cant open dir: %s", location);
-		return -1;
+		warn("Cant open dir: %s", location);
+		return NULL;
 	}
 
 	while ((dir = readdir(d)))
@@ -276,52 +273,34 @@ searchGameStartPoint(int id, const char *location)
 
 		if (!isDirectory(rpath)) {
 			if (checkStartPoint(id, rpath)) {
-				return 1;
+				sp = strdup(rpath);
+				break;
 			}
-		}
-		else if (isOtherDirectory(location, rpath)) {
-			searchGameStartPoint(id, rpath);
+		} else if (isOtherDirectory(location, rpath)) {
+			sp = searchGameStartPoint(id, rpath);
 		}
 	}
 
 	if (closedir(d) == -1) {
-		warn("FATAL. Cant close dir: %s", location);
-		return -1;
+		warn("Cant close dir: %s", location);
+		return NULL;
 	}
 	
-	return 0;
-}
-
-int
-findGameStartPoint(int gc)
-{
-	int i;
-
-	printf("Finding start point...\n");
-
-	for (i = 0; i <= gc; i++)
-	{
-		if (searchGameStartPoint(i, Game[i].location) != 1) {
-			/* printf("No start point found in \"%s\"\n", Game[i].location); */
-			;
-		}
-
-		printf("\r%d/%d", i, gc);
-		fflush(stdout);
-	}
-
-	return i;
+	/* warn("Retrun"); */
+	return sp; //strdup(sp);
 }
 
 int
 findGameLocations(const char *path, int id)
 {
 	char rpath[PATH_MAX];
+	char *startPoint;
 
 	DIR *d;
 	struct dirent *dir;
 
-	printf("Radding locations of games...\n");
+	printf("Finding games...\n");
+	printf("%d\n", id);
 
 	if (!(d = opendir(path))) {
 		warn("Cant open dir: %s:", path);
@@ -336,10 +315,15 @@ findGameLocations(const char *path, int id)
 		}
 
 		if (isDirectory(rpath)) {
-			/* if (searchGameStartPoint(id, rpath) == 1) { */
-				editGameEntry(id, basename(rpath), rpath, NULL);
+			printf(":: Start finding in %s\n", rpath); fflush(stdout);
+			startPoint = searchGameStartPoint(id, rpath);
+			/* printf("sp - %s\n", startPoint); */
+			if (startPoint) {
+				printf("  -- Found sp in %s\n", rpath); fflush(stdout);
+				editGameEntry(id, basename(rpath), rpath, startPoint);
 				id++;
-			/* } */
+			}
+			free(startPoint);
 		}
 	}
 
@@ -347,6 +331,8 @@ findGameLocations(const char *path, int id)
 		warn("Cant close dir: %s:", path);
 		return -1;
 	}
+
+	printf("%d\n", id);
 
 	return id - 1;
 }
@@ -411,8 +397,6 @@ readCache(const char *cachePath)
 		config_destroy(&cfg);
 		return -1;
 	}
-
-	printf("HEAR\n"); fflush(stdout);
 
 	setting = config_lookup(&cfg, "games");
 
@@ -511,14 +495,12 @@ scan(const char *path)
 
 	readConfig();
 	readedGameEntries = readCache("/home/xewii/.cache/ga-org.conf");
-	if ((gc = findGameLocations(path, readedGameEntries)) <= 0) { 
-		warn("No one dir were found in: \"%s\"", path);
-	}
-	findGameStartPoint(gc);
+	gc = findGameLocations(path, readedGameEntries);
 	/* writeCache("/home/xewii/.cache/ga-org.conf"); */
 
 	for (int i = 0; i < gc; i++) {
 		printf("id          - %d\ngame        - %s\nlocation    - %s\nstart point - %s\n\n", i, Game[i].name, Game[i].location, Game[i].starPoint);
+		fflush(stdout);
 	}
 
 	return gc;
@@ -530,8 +512,7 @@ usage(void)
 	die("[-c|--config] <DIR>(<DIR>...)");
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *userConf = NULL;
 
@@ -559,10 +540,10 @@ main(int argc, char **argv)
 			}
 	}
 
-	if (! *argv) {
-		warn("No directory path specified");
-		usage();
-	}
+	/* if (! *argv) { */
+	/* 	warn("No directory path specified"); */
+	/* 	usage(); */
+	/* } */
 
 	char tmp[PATH_MAX];
 
@@ -575,7 +556,7 @@ main(int argc, char **argv)
 	confPathes[2] = userConf;
 
 	//add multi path option
-	scan(*argv);
+	scan((*argv) ? *argv : ".");
 
 	return 0;
 }
