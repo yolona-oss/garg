@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <libgen.h>
@@ -14,23 +15,41 @@
 char *argv0;
 char *gameName;
 
+int qflag, dflag;
+
 void
 verr(const char *fmt, va_list ap)
 {
-	if (argv0 && strncmp(fmt, "usage", sizeof("usage") - 1)) {
-		fprintf(stderr, "%s: ", argv0);
+	if (!qflag) {
+		if (argv0 && strncmp(fmt, "usage", sizeof("usage") - 1)) {
+			fprintf(stderr, "%s: ", argv0);
+		}
+
+		vfprintf(stderr, fmt, ap);
+
+		if (fmt[0] && fmt[strlen(fmt) - 1] == ':') {
+			fputc(' ', stderr);
+			perror(NULL);
+		} else {
+			fputc('\n', stderr);
+		}
+
+		fflush(stderr);
 	}
+}
 
-	vfprintf(stderr, fmt, ap);
+void
+allerMsg(const char *fmt, ...)
+{
+	if (dflag) {
+		va_list ap;
+		
+		va_start(ap, fmt);
+		vfprintf(stdout, fmt, ap);
+		va_end(ap);
 
-	if (fmt[0] && fmt[strlen(fmt) - 1] == ':') {
-		fputc(' ', stderr);
-		perror(NULL);
-	} else {
-		fputc('\n', stderr);
+		fflush(stdout);
 	}
-
-	fflush(stdout);
 }
 
 void
@@ -58,39 +77,39 @@ die(const char *fmt, ...)
 void
 printPP(char **pa, char *sep, int n)
 {
-	printf(" [II] Printting array of pointers\n");
+	allerMsg(" [II] Printting array of pointers\n");
 	for (int i = 0; i < n; i++) {
 		printf("%s%s", *pa++, sep);
 	}
 
-	printf("\n");
-	fflush(stdout);
+	putchar('\n');
 }
 
 void
 freePP(char **pa, int n)
 {
-	printf("\n");
+	allerMsg("\n");
 	while (n--) {
-		printf(" [%3d] free - %s\n", n, pa[n]); fflush(stdout);
+		allerMsg(" [%3d] free - %s\n", n, pa[n]);
 		free(pa[n]);
 	}
-	printf(" [END] free pp\n"); fflush(stdout);
-	printf("\n");
+
+	allerMsg(" [END] free pp\n"); fflush(stdout);
+	allerMsg("\n");
 	free(pa);
 }
 
 void
 freeSG(struct game Game[])
 {
-	printf("Freeing SG\n");
+	allerMsg("Freeing SG\n");
 	for (int i = 0; Game[i].location; i++) {
 		Game[i].id = -1707;
 		free(Game[i].name);
 		free(Game[i].location);
 		free(Game[i].starPoint);
 	}
-	printf("SG freeing success\n");
+	allerMsg("SG freeing success\n");
 }
 
 int
@@ -193,45 +212,36 @@ isExecuteble(const char *path)
 int
 isExcludeName(const char *path)
 {
-	return 0;
-	/* int status; */
-	/* char *name; */
-	/* regex_t regex; */
+	int status;
+	char *name;
+	regex_t regex;
 
-	/* char tmp[1000]; */
+	name = basename((char*)path);
 
-	/* name = basename((char*)path); */
+	for (int i = 0; exceptionName[i]; i++) {
+		allerMsg(" [!!] Start read exceptions\n");
+		status = regcomp(&regex, exceptionName[i], REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
 
-	/* for (int i = 0; exceptionName[i]; i++) { */
-	/* 	printf(" [!!] Start read exceptions\n"); fflush(stdout); */
+		if (status) {
+			warn("regcomp:");
+			regfree(&regex);
+			continue;
+		}
 
-	/* 	/1* strcpy(tmp, exceptionName[i]); *1/ */
-	/* 	/1* printf(" %s\n", tmp); fflush(stdout); *1/ */
-	/* 	/1* status = regcomp(&regex, tmp, REG_EXTENDED|REG_NEWLINE|REG_NOSUB); *1/ */
-
-	/* 	status = regcomp(&regex, exceptionName[i], REG_EXTENDED|REG_NEWLINE|REG_NOSUB); */
-
-	/* 	if (status) { */
-	/* 		warn("regcomp:"); */
-	/* 		regfree(&regex); */
-	/* 		continue; */
-	/* 	} */
-
-	/* 	printf("   [!!] Comparing\n"); fflush(stdout); */
-	/* 	status = regexec(&regex, name, 0, NULL, 0); */
+		allerMsg("   [!!] Comparing\n");
+		status = regexec(&regex, name, 0, NULL, 0);
 		
-	/* 	/1* printf(" [!!] \n"); fflush(stdout); *1/ */
-	/* 	if (!status) { */
-	/* 		printf(" [!!] Exception check END\n"); fflush(stdout); */
-	/* 		regfree(&regex); */
-	/* 		return 1; */
-	/* 	} */
+		if (!status) {
+			allerMsg(" [!!] Exception check END\n");
+			regfree(&regex);
+			return 1;
+		}
 
-	/* 	regfree(&regex); */
-	/* } */
+		regfree(&regex);
+	}
 
-	/* printf(" [!!] Exception check END\n"); fflush(stdout); */
-	/* return 0; */
+	allerMsg(" [!!] Exception check END\n");
+	return 0;
 }
 
 int
@@ -308,6 +318,29 @@ printGameEntry(int id)
 }
 
 int
+checkGameEntry(int id)
+{
+	short eflag = 0;
+
+	if (!isExist(Game[id].location)) {
+		/* warn("Game location dont exist"); */
+		eflag |= G_NOLOC;
+	}
+		
+	if (!isStartPoint(Game[id].starPoint)) {
+		/* warn("Game start point dont exist"); */
+		eflag |= G_NOSP;
+	}
+
+	if (Game[id].name) {
+		/* warn("Game dont hame name"); */
+		eflag |= G_NONAME;
+	}
+
+	return eflag;
+}
+
+int
 editGameEntry(int id, const char *name, const char *location, const char *startPoint)
 {
 	if (id < 0 || id > MAX_GAMES) {
@@ -315,7 +348,7 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 		return -1;
 	}
 
-	int len;
+	int len, n = 0;
 
 	if (name) {
 		len = strlen(name) + 1;
@@ -325,8 +358,10 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 		}
 
 		Game[id].name = (char *)malloc(len);
-		if (Game[id].name)
+		if (Game[id].name) {
 			memcpy(Game[id].name, name, len);
+			n++;
+		}
 	}
 
 	if (location) {
@@ -337,8 +372,10 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 		}
 
 		Game[id].location = (char *)malloc(len);
-		if (Game[id].location)
+		if (Game[id].location) {
 			memcpy(Game[id].location, location, len);
+			n++;
+		}
 	}
 
 	if (startPoint) {
@@ -349,10 +386,50 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 		}
 
 		Game[id].starPoint = (char *)malloc(len);
-		if (Game[id].starPoint)
+		if (Game[id].starPoint) {
 			memcpy(Game[id].starPoint, startPoint, len);
+			n++;
+		}
+	}
+
+	return n;
+}
+
+void
+wipeGameEntry(int id)
+{
+	if (Game[id].name) {
+		free(Game[id].name);
+	}
+
+	if (Game[id].location) {
+		free(Game[id].location);
+	}
+
+	if (Game[id].starPoint) {
+		free(Game[id].starPoint);
+	}
+
+	if (isdigit(Game[id].id)) {
+		Game[id].id = -1;
+	}
+}
+
+int
+gecmp(struct game src, struct game dst)
+{
+	if (strcmp(src.location, dst.location) == 0 &&
+			strcmp(src.name, dst.name) == 0 &&
+			strcmp(src.starPoint, dst.starPoint) == 0) {
+		return 0;
 	}
 
 	return 1;
 }
 
+
+int
+gecpy(struct game dst, struct game src)
+{
+	return editGameEntry(dst.id, src.name, src.location, src.starPoint);
+}

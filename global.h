@@ -13,9 +13,9 @@ struct game {
 	char *starPoint;
 };
 
-extern char *gameName;
 extern struct game Game[MAX_GAMES+1];
-extern char **confPathes;
+extern char *gameName;
+extern char *cachePath;
 
 extern char **exceptionName;
 /* extern char *exceptionPath[MAX_EXCEPTIONS]; */

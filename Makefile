@@ -1,10 +1,10 @@
-CC=ccache g++
+CC=ccache gcc
 
 INC     =
 LDFLAGS =
 LDLIBS  = -l config #$(shell `pkg-config --libs libconfig`)
 
-CFLAGS  = -g -c -Wall -xc -O2 $(INC)
+CFLAGS  = -g -c -Wall -xc -Os $(INC)
 CFLAGS +=
 
 SOURCES =main.c util.c ccread.c

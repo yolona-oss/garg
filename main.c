@@ -10,7 +10,7 @@
 #include "ccread.h"
 
 struct game Game[MAX_GAMES+1];
-char **confPathes;
+char *userConf;
 char **exceptionName;
 /* char *exceptionPath[MAX_EXCEPTIONS]; */
 /* char *inclusions[MAX_INCLUSIONS]; */
@@ -24,7 +24,7 @@ getFileList(const char *path, int *count)
 	char rpath[PATH_MAX];
 	int n = 0, c, len;
 
-	printf("      [II] getting file list\n"); fflush(stdout);
+	allerMsg("      [II] getting file list\n");
 
 	n = scandir(path, &namelist, NULL, alphasort);
 	if (n == -1) {
@@ -32,16 +32,11 @@ getFileList(const char *path, int *count)
 		return NULL;
 	}
 
-	printf("size - %d\n", n); fflush(stdout);
+	allerMsg("    [!!] nl size - %d\n", n);
 	ret = (char **)malloc(sizeof(char **) * (n+1));
 	if (!ret) {
 		warn("malloc:");
 		return NULL;
-	}
-
-	int tmp = n;
-	while (tmp--) {
-		printf(" == %s\n", namelist[tmp]->d_name);
 	}
 
 	c = 0;
@@ -49,11 +44,8 @@ getFileList(const char *path, int *count)
 	{
 		if (!isDotName(namelist[n]->d_name) && getRPath(namelist[n]->d_name, path, rpath)) {
 			len = strlen(rpath) + 1;
-			printf("%d - len of : %s\n", len, rpath);
-			printf("+"); fflush(stdout);
 			if ((ret[c] = (char *)malloc(sizeof(char *) * len))) {
 				memcpy(ret[c++], rpath, len);
-				printf(" RET: %s\n", ret[c-1]);
 			} else {
 				warn("malloc:");
 			}
@@ -62,11 +54,10 @@ getFileList(const char *path, int *count)
 		free(namelist[n]);
 	}
 	free(namelist);
-	printf("\n"); fflush(stdout);
 
 	*count = c;
 
-	printf("      [II] |%d| getted\n", c);
+	allerMsg("      [II] %d getted\n", c);
 
 	return ret;
 }
@@ -83,7 +74,7 @@ searchSP(const char *location)
 	int i_d;
 	i_d = 0;
 
-	printf("    [II] Scanning %s\n", location);
+	allerMsg("    [II] Scanning %s\n", location);
 
 	if (!(dirs = (char **)malloc(sizeof(char **) * 10000))) {
 		warn("malloc:");
@@ -94,23 +85,22 @@ searchSP(const char *location)
 
 	for (i = 0; i < ecount; i++)
 	{
-		printf("      [II] Checking file %s\n", list[i]); fflush(stdout);
+		allerMsg("      [II] Checking file %s\n", list[i]);
 		if (!isExcludeName(list[i]))
 		{
-			/* printf("HEAR\n"); fflush(stdout); */
 			if ((stat = isDirectory(list[i]))) {
-				/* printf("      [II] Adding dir to array "); fflush(stdout); */
+				/* allerMsg("      [II] Adding dir to array "); */
 				/* if ((dirs[i_d] = (char *)malloc(strlen(list[i]+1)))) { */
 				/* 	strcpy(dirs[i_d++], list[i]); */
 				/* } else { */
 				/* 	warn("malloc:"); */
 				/* } */
-				/* printf("%s\n", dirs[i_d-1]); fflush(stdout); */
+				/* allerMsg("%s\n", dirs[i_d-1]); */
 			} else if (stat == 0) {
-				printf("       [@@] Checking - \"%s\"\n", list[i]); fflush(stdout);
+				allerMsg("       [@@] Checking - \"%s\"\n", list[i]);
 
 				if (isStartPoint(list[i])) {
-					printf("     [SS] Congrat!!\n"); fflush(stdout);
+					allerMsg("     [SS] Congrat!!\n");
 
 					len = strlen(list[i]) + 1;
 					if ((sp = (char *)malloc(len))) {
@@ -139,10 +129,13 @@ searchSP(const char *location)
 	return sp;
 }
 
+#include "ccread.h"
+
 //try use nftw instead loop
 int
 findGames(const char *path, int id)
 {
+	int curID;
 	char rpath[PATH_MAX];
 	char *startPoint;
 
@@ -156,23 +149,40 @@ findGames(const char *path, int id)
 		return -1;
 	}
 
+	curID = 0;
+	int uniq;
 	while ((dir = readdir(d)))
 	{
+		uniq = 1;
 		if (isDotName(dir->d_name) || !getRPath(dir->d_name, path, rpath)
 				|| isExcludeName(rpath)) {
 			continue;
 		}
 
 		if (isDirectory(rpath)) {
-			printf(":: Start finding in: %s\n", rpath); fflush(stdout);
+			allerMsg(":: Start finding in: %s\n", rpath);
 			gameName = basename(rpath);
+			/* ************************************************* */
+			/* LOOOOOOOOOOOOK AT MEEEEEEEEEEEEEEEEEE (TODO) */
+			/* ************************************************* */
+			for (int f = 0; f < id-curID; f++) {
+				if (strcmp(gameName, Game[f].name) == 0) {
+					uniq=1;
+					break;
+				}
+			}
+			if (!uniq)
+				continue;
+
 			startPoint = searchSP(rpath);
 			if (startPoint) {
-				/* printf("  -- Found sp: %s\n", startPoint); fflush(stdout); */
+				allerMsg("  -- Found sp: %s\n", startPoint);
+
 				Game[id].id = id;
 				editGameEntry(id, gameName, rpath, startPoint);
-				printGameEntry(id);
+
 				id++;
+				curID++;
 			}
 
 			free(startPoint);
@@ -203,17 +213,15 @@ scan(const char *path)
 	}
 
 	readConfig();
-	/* readedGameEntries = readCache("/home/xewii/.cache/ga-org.conf"); */
-	readedGameEntries = 0;
-	gc = findGames(path, readedGameEntries);
-	/* writeCache("/home/xewii/.cache/ga-org.conf"); */
-
-	printf("###################SCAN END###################\n");
-	for (int i = 0; i <= gc; i++) {
-		/* printf("id          - %d\ngame        - %s\nlocation    - %s\nstart point - %s\n\n", i, Game[i].name, Game[i].location, Game[i].starPoint); */
-		printGameEntry(i);
-		fflush(stdout);
+	readedGameEntries = readCache();
+	gc = findGames(path, (readedGameEntries > 0) ? readedGameEntries : 0) + 1;
+	if (gc > 0) {
+		writeCache();
 	}
+
+	/* for (int i = 0; i < gc; i++) { */
+	/* 	printGameEntry(i); */
+	/* } */
 
 	return gc;
 }
@@ -221,62 +229,56 @@ scan(const char *path)
 void
 usage(void)
 {
-	die("[-c|--config] <DIR>(<DIR>...)");
+	die("[-q|--quiet] [-c|--config] <DIR>(<DIR>...)");
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
-	char *userConf = NULL;
-	char tmp[PATH_MAX];
-
 	argv0 = *argv;
 	argv++;
 
+	qflag = 0;
+	dflag = 0;
+
 	for (int i = 0; *argv && (*argv)[0] == '-' && (*argv)[1]; i++, argc--, argv++)
 	{
+		//modifycate
 		if ((*argv)[1] == '-') {
 			*argv += 2;
 		} else {
 			(*argv)++;
 		}
-			if (strcmp(*argv, "c") == 0) {
-				userConf = *(++argv);
-			} else if (strcmp(*argv, "config") == 0) {
-				userConf = *(++argv);
-			} else if (strcmp(*argv, "h") == 0) {
-				usage();
-			} else if (strcmp(*argv, "help") == 0){
-				usage();
-			} else {
-				warn("Unknown argument: \"%s\"", *argv);
-				usage();
-			}
+
+		if (strcmp(*argv, "c") == 0 ||
+				strcmp(*argv, "config") == 0)
+		{
+			int len = strlen(*argv) + 1;
+			userConf = (char *)malloc(len);
+			memcpy(userConf, *(++argv), len);
+		}
+		else if (strcmp(*argv, "q") == 0 ||
+				strcmp(*argv, "quiet") == 0) {
+			qflag = 1;
+		}
+		if (strcmp(*argv, "d") == 0 ||
+				strcmp(*argv, "debug") == 0) {
+			dflag = 1;
+		} else if (strcmp(*argv, "h") == 0 ||
+				strcmp(*argv, "help") == 0) {
+			usage();
+		} else {
+			warn("Unknown argument: \"%s\"", *argv);
+			usage();
+		}
 	}
-
-	int len;
-
-	confPathes = (char **)malloc(sizeof(char **) * ((userConf) ? 3 : 2));
-
-	len = sprintf(tmp, "%s/%s", getenv("HOME"), ".ga-org.conf") + 1;
-	confPathes[0] = (char *)malloc(len);
-	memcpy(confPathes[0], tmp, len);
-
-	len = sprintf(tmp, "%s/%s", getenv("HOME"), ".config/ga-org.conf") + 1;
-	confPathes[1] = (char *)malloc(len);
-	memcpy(confPathes[1], tmp, len);
-
-	if (userConf) {
-		len = strlen(userConf) + 1;
-		confPathes[2] = (char *)malloc(len);
-		memcpy(confPathes[2], userConf, len);
-	}
-
+	
 	//add multi path option
 	scan((*argv) ? *argv : ".");
 
 	freeSG(Game);
 	freePP(exceptionName, getLenOfPP(exceptionName));
-	freePP(confPathes, getLenOfPP(confPathes));
 
+	printf("EXIT\n");
 	return 0;
 }
