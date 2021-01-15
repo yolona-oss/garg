@@ -1,4 +1,4 @@
-CC=gcc
+CC=ccache gcc
 
 INC     =
 LDFLAGS =
@@ -7,7 +7,7 @@ LDLIBS  = -l config #$(shell `pkg-config --libs libconfig`)
 CFLAGS  = -g -c -Wall -xc -O2 $(INC)
 CFLAGS +=
 
-SOURCES =main.c util.c
+SOURCES =main.c util.c ccread.c
 OBJECTS =$(SOURCES:.c=.o)
 EXECUTABLE =$(shell basename `pwd`)
 

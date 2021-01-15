@@ -5,33 +5,22 @@
 #define MAX_INCLUSIONS  MAX_EXCEPTIONS
 #define MAX_GAMES       1000
 
+struct game {
+	int id;
+	char *name;
+	char *location;
+	char *starPoint;
+};
+
+extern struct game Game[MAX_GAMES+1];
 extern char *argv0;
+extern char *gameName;
 
-int isExist(const char *path);
-int isDirectory(const char *path);
-int isOtherDirectory(const char *path, const char *root);
-int isDotName(const char *name);
-int isExecuteble(const char *path);
-int isExcludeName(const char *name);
 
-int getRPath(const char *filename, const char *root, char *rpath);
-int getConfigIndex(void);
-
-int readExceptions(const char *confPath);
-int readConfig(void);
-int readCache(const char *cachePath);
-
-int writeCache(const char *cachePath);
-
-int checkStartPoint(int id, const char *file);
-
-int editGameEntry(int id, const char *name, const char *location, const char *startPoint);
-
-int findGameStartPoint(int gc);
-char *searchGameStartPoint(int id, const char *location);
-int findGameLocations(const char *path, int id);
+char *searchSP(const char *location);
+int findGames(const char *path, int id);
 int scan(const char *path);
 
-static void usage();
+void usage();
 
 #endif
