@@ -3,15 +3,12 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <fcntl.h>
 #include <libgen.h>
 #include <regex.h>
 #include <limits.h>
 #include <sys/stat.h>
-#include <libconfig.h>
 
-#include "main.h"
+#include "global.h"
 #include "util.h"
 
 char *argv0;
@@ -83,6 +80,19 @@ freePP(char **pa, int n)
 	free(pa);
 }
 
+void
+freeSG(struct game Game[])
+{
+	printf("Freeing SG\n");
+	for (int i = 0; Game[i].location; i++) {
+		Game[i].id = -1707;
+		free(Game[i].name);
+		free(Game[i].location);
+		free(Game[i].starPoint);
+	}
+	printf("SG freeing success\n");
+}
+
 int
 rmDupInArrOfPointers(char *pa[], int n)
 { 
@@ -122,7 +132,7 @@ rmDupInArrOfPointers(char *pa[], int n)
 int
 isExist(const char *path)
 {
-	if (access(path, F_OK ) == 0) {
+	if (!access(path, F_OK)) {
 		return 1;
 	}
 
@@ -275,6 +285,17 @@ getRPath(const char *fileName, const char *root, char *rpath)
 	return 1;
 }
 
+int
+getLenOfPP(char **pp)
+{
+	int ret = 0;
+
+	while (*pp++)
+		ret++;
+
+	return ret;
+}
+
 void
 printGameEntry(int id)
 {
@@ -294,16 +315,42 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 		return -1;
 	}
 
+	int len;
+
 	if (name) {
-		Game[id].name = strdup(name);
+		len = strlen(name) + 1;
+
+		if (Game[id].name) {
+			free(Game[id].name);
+		}
+
+		Game[id].name = (char *)malloc(len);
+		if (Game[id].name)
+			memcpy(Game[id].name, name, len);
 	}
 
 	if (location) {
-		Game[id].location = strdup(location);
+		len = strlen(location) + 1;
+
+		if (Game[id].location) {
+			free(Game[id].location);
+		}
+
+		Game[id].location = (char *)malloc(len);
+		if (Game[id].location)
+			memcpy(Game[id].location, location, len);
 	}
 
 	if (startPoint) {
-		Game[id].starPoint = strdup(startPoint);
+		len = strlen(startPoint) + 1;
+
+		if (Game[id].starPoint) {
+			free(Game[id].starPoint);
+		}
+
+		Game[id].starPoint = (char *)malloc(len);
+		if (Game[id].starPoint)
+			memcpy(Game[id].starPoint, startPoint, len);
 	}
 
 	return 1;

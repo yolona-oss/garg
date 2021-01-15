@@ -2,15 +2,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <dirent.h>
 #include <fcntl.h>
-#include <libgen.h>
-#include <regex.h>
-#include <limits.h>
-#include <sys/stat.h>
 #include <libconfig.h>
 
-#include "main.h"
+#include "global.h"
 #include "ccread.h"
 #include "util.h"
 
@@ -132,3 +127,93 @@ writeCache(const char *cachePath)
 	return 1;
 }
 
+int
+getConfigIndex(void)
+{
+	int n = -1;
+	int i;
+
+	for (i = 2; i != 0; i--) {
+		if (isExist(confPathes[i])) {
+			n = i;
+			break;
+		}
+	}
+
+	return n;
+}
+
+int
+readExceptions(const char *confPath)
+{
+	int i, c, len, ind = 0;
+	config_t cfg;
+	config_setting_t *setting, *setting_names;
+
+	config_init(&cfg);
+
+	exceptionName = (char **)malloc(MAX_EXCEPTIONS+1);
+
+	if (!config_read_file(&cfg, confPath)) {
+		warn("Cant read config file: %s", confPath);
+		config_destroy(&cfg);
+		return -1;
+	}
+
+	setting = config_lookup(&cfg, "exceptions");
+
+	if (setting)
+	{
+		setting_names = config_setting_lookup(setting, "name");
+
+		if (config_setting_type(setting_names) != CONFIG_TYPE_ARRAY) {
+			config_destroy(&cfg);
+			return -1;
+		}
+
+		c = config_setting_length(setting_names);
+
+		ind = 0;
+		/* default exceptions */
+		/* exceptionName[ind++] = "^Steam$"; */
+		/* exceptionName[ind++] = "^[.]wine\\w*"; */
+		exceptionName[ind] = (char *)malloc(100);
+		strcpy(exceptionName[ind++], "^Steam$");
+		exceptionName[ind] = (char *)malloc(100);
+		strcpy(exceptionName[ind++], "^[.]wine\\w*");
+
+		for (i = 0; i < c; i++) {
+			const char *exc = config_setting_get_string_elem(setting_names, i);
+			len = strlen(exc) + 1;
+			exceptionName[ind] = (char *)malloc(len);
+			if (exceptionName[ind]) {
+				memcpy(exceptionName[ind++], exc, len);
+			}
+		}
+	}
+
+	config_destroy(&cfg);
+
+	rmDupInArrOfPointers(exceptionName, ind);
+
+	return ind;
+}
+
+int
+readConfig(void)
+{
+	int n;
+
+	printf("Reading config file...\n");
+
+	if ((n=getConfigIndex()) == -1) {
+		warn("No config file found");
+		return 0;
+	}
+
+	if (readExceptions(confPathes[n]) == -1) {
+		warn("Cant read exceptions");
+	}
+
+	return 1;
+}

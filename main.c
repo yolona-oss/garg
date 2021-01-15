@@ -1,109 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <dirent.h>
-#include <fcntl.h>
 #include <libgen.h>
-#include <regex.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <libconfig.h>
 
 #include "main.h"
+#include "global.h"
 #include "util.h"
 #include "ccread.h"
 
 struct game Game[MAX_GAMES+1];
-
-static char *confPathes[3];
-static char *exceptionName[MAX_EXCEPTIONS];
-/* static char *exceptionPath[MAX_EXCEPTIONS]; */
-/* static char *inclusions[MAX_INCLUSIONS]; */
-
-int
-getConfigIndex(void)
-{
-	int n = -1;
-	int i;
-
-	for (i = 2; i != 0; i--) {
-		if (isExist(confPathes[i])) {
-			n = i;
-			break;
-		}
-	}
-
-	return n;
-}
-
-int
-readExceptions(const char *confPath)
-{
-	int i, c, ind = 0;
-	config_t cfg;
-	config_setting_t *setting, *setting_names;
-
-	config_init(&cfg);
-
-	if (!config_read_file(&cfg, confPath)) {
-		warn("Cant read config file: %s", confPath);
-		config_destroy(&cfg);
-		return -1;
-	}
-
-	setting = config_lookup(&cfg, "exceptions");
-
-	if (setting)
-	{
-		setting_names = config_setting_lookup(setting, "name");
-
-		if (config_setting_type(setting_names) != CONFIG_TYPE_ARRAY) {
-			config_destroy(&cfg);
-			return -1;
-		}
-
-		c = config_setting_length(setting_names);
-
-		ind = 0;
-		/* default exceptions */
-		exceptionName[ind++] = "^Steam$";
-		exceptionName[ind++] = "^[.]wine\\w*";
-		/* exceptionName[ind] = (char *)malloc(100); */
-		/* strcpy(exceptionName[ind++], "^Steam$"); */
-		/* exceptionName[ind] = (char *)malloc(100); */
-		/* strcpy(exceptionName[ind++], "^[.]wine\\w*"); */
-
-		for (i = 0; i < c; i++) {
-			exceptionName[ind++] = strdup(config_setting_get_string_elem(setting_names, i));
-		}
-	}
-
-	config_destroy(&cfg);
-
-	rmDupInArrOfPointers(exceptionName, ind);
-
-	return ind;
-}
-
-int
-readConfig(void)
-{
-	int n;
-
-	printf("Reading config file...\n");
-
-	if ((n=getConfigIndex()) == -1) {
-		warn("No config file found");
-		return 0;
-	}
-
-	if (readExceptions(confPathes[n]) == -1) {
-		warn("Cant read exceptions");
-	}
-
-	return 1;
-}
+char **confPathes;
+char **exceptionName;
+/* char *exceptionPath[MAX_EXCEPTIONS]; */
+/* char *inclusions[MAX_INCLUSIONS]; */
 
 char **
 getFileList(const char *path, int *count)
@@ -112,7 +22,7 @@ getFileList(const char *path, int *count)
 	char **ret;
 
 	char rpath[PATH_MAX];
-	int n = 0, c;
+	int n = 0, c, len;
 
 	printf("      [II] getting file list\n"); fflush(stdout);
 
@@ -123,7 +33,7 @@ getFileList(const char *path, int *count)
 	}
 
 	printf("size - %d\n", n); fflush(stdout);
-	ret = (char **)malloc(n+1);
+	ret = (char **)malloc(sizeof(char **) * (n+1));
 	if (!ret) {
 		warn("malloc:");
 		return NULL;
@@ -138,9 +48,12 @@ getFileList(const char *path, int *count)
 	while (n--)
 	{
 		if (!isDotName(namelist[n]->d_name) && getRPath(namelist[n]->d_name, path, rpath)) {
+			len = strlen(rpath) + 1;
+			printf("%d - len of : %s\n", len, rpath);
 			printf("+"); fflush(stdout);
-			if ((ret[c] = (char *)malloc(strlen(rpath)+1))) {
-				strcpy(ret[c++], rpath);
+			if ((ret[c] = (char *)malloc(sizeof(char *) * len))) {
+				memcpy(ret[c++], rpath, len);
+				printf(" RET: %s\n", ret[c-1]);
 			} else {
 				warn("malloc:");
 			}
@@ -161,7 +74,7 @@ getFileList(const char *path, int *count)
 char *
 searchSP(const char *location)
 {
-	int ecount, i, stat;
+	int ecount, i, stat, len;
 	char *sp = NULL;
 	char **list;
 
@@ -172,7 +85,7 @@ searchSP(const char *location)
 
 	printf("    [II] Scanning %s\n", location);
 
-	if (!(dirs = (char **)malloc(1000))) {
+	if (!(dirs = (char **)malloc(sizeof(char **) * 10000))) {
 		warn("malloc:");
 		return NULL;
 	}
@@ -199,8 +112,9 @@ searchSP(const char *location)
 				if (isStartPoint(list[i])) {
 					printf("     [SS] Congrat!!\n"); fflush(stdout);
 
-					if ((sp = (char *)malloc(strlen(list[i]+1)))) {
-						strcpy(sp, list[i]);
+					len = strlen(list[i]) + 1;
+					if ((sp = (char *)malloc(len))) {
+						memcpy(sp, list[i], len);
 					} else {
 						warn("malloc:");
 					}
@@ -255,6 +169,7 @@ findGames(const char *path, int id)
 			startPoint = searchSP(rpath);
 			if (startPoint) {
 				/* printf("  -- Found sp: %s\n", startPoint); fflush(stdout); */
+				Game[id].id = id;
 				editGameEntry(id, gameName, rpath, startPoint);
 				printGameEntry(id);
 				id++;
@@ -293,8 +208,10 @@ scan(const char *path)
 	gc = findGames(path, readedGameEntries);
 	/* writeCache("/home/xewii/.cache/ga-org.conf"); */
 
-	for (int i = 0; i < gc; i++) {
-		printf("id          - %d\ngame        - %s\nlocation    - %s\nstart point - %s\n\n", i, Game[i].name, Game[i].location, Game[i].starPoint);
+	printf("###################SCAN END###################\n");
+	for (int i = 0; i <= gc; i++) {
+		/* printf("id          - %d\ngame        - %s\nlocation    - %s\nstart point - %s\n\n", i, Game[i].name, Game[i].location, Game[i].starPoint); */
+		printGameEntry(i);
 		fflush(stdout);
 	}
 
@@ -336,16 +253,30 @@ int main(int argc, char **argv)
 			}
 	}
 
-	sprintf(tmp, "%s/%s", getenv("HOME"), ".ga-org.conf");
-	confPathes[0] = tmp;
+	int len;
 
-	sprintf(tmp, "%s/%s", getenv("HOME"), ".config/ga-org.conf");
-	confPathes[1] = tmp;
+	confPathes = (char **)malloc(sizeof(char **) * ((userConf) ? 3 : 2));
 
-	confPathes[2] = userConf;
+	len = sprintf(tmp, "%s/%s", getenv("HOME"), ".ga-org.conf") + 1;
+	confPathes[0] = (char *)malloc(len);
+	memcpy(confPathes[0], tmp, len);
+
+	len = sprintf(tmp, "%s/%s", getenv("HOME"), ".config/ga-org.conf") + 1;
+	confPathes[1] = (char *)malloc(len);
+	memcpy(confPathes[1], tmp, len);
+
+	if (userConf) {
+		len = strlen(userConf) + 1;
+		confPathes[2] = (char *)malloc(len);
+		memcpy(confPathes[2], userConf, len);
+	}
 
 	//add multi path option
 	scan((*argv) ? *argv : ".");
+
+	freeSG(Game);
+	freePP(exceptionName, getLenOfPP(exceptionName));
+	freePP(confPathes, getLenOfPP(confPathes));
 
 	return 0;
 }

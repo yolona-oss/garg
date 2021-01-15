@@ -1,4 +1,4 @@
-CC=ccache gcc
+CC=ccache g++
 
 INC     =
 LDFLAGS =
