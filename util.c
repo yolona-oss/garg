@@ -13,14 +13,13 @@
 #include "util.h"
 
 char *argv0;
-char *gameName;
 
-int qflag, dflag;
+int g_qflag, g_dflag;
 
 void
 verr(const char *fmt, va_list ap)
 {
-	if (!qflag) {
+	if (!g_qflag) {
 		if (argv0 && strncmp(fmt, "usage", sizeof("usage") - 1)) {
 			fprintf(stderr, "%s: ", argv0);
 		}
@@ -41,7 +40,7 @@ verr(const char *fmt, va_list ap)
 void
 allerMsg(const char *fmt, ...)
 {
-	if (dflag) {
+	if (g_dflag) {
 		va_list ap;
 		
 		va_start(ap, fmt);
@@ -77,7 +76,6 @@ die(const char *fmt, ...)
 void
 printPP(char **pa, char *sep, int n)
 {
-	allerMsg(" [II] Printting array of pointers\n");
 	for (int i = 0; i < n; i++) {
 		printf("%s%s", *pa++, sep);
 	}
@@ -88,32 +86,44 @@ printPP(char **pa, char *sep, int n)
 void
 freePP(char **pa, int n)
 {
-	allerMsg("\n");
-	while (n--) {
-		allerMsg(" [%3d] free - %s\n", n, pa[n]);
-		free(pa[n]);
+	if (pa) {
+		while (n--) {
+			free(pa[n]);
+		}
+		free(pa);
 	}
-
-	allerMsg(" [END] free pp\n"); fflush(stdout);
-	allerMsg("\n");
-	free(pa);
 }
 
 void
-freeSG(struct game Game[])
+freePSG(struct Game_rec *Game)
 {
-	allerMsg("Freeing SG\n");
-	for (int i = 0; Game[i].location; i++) {
-		Game[i].id = -1707;
-		free(Game[i].name);
-		free(Game[i].location);
-		free(Game[i].starPoint);
+	if (Game) {
+		Game->id = -1707;
+		if (Game->name)
+			free(Game->name);
+		if (Game->location)
+			free(Game->location);
+		if (Game->start_point)
+			free(Game->start_point);
+		free(Game);
 	}
-	allerMsg("SG freeing success\n");
+}
+
+void
+freePPSG(struct Game_rec **Games)
+{
+	if (Games) {
+		for (int i = 0; Games[i] && (Games[i]->location ||
+						Games[i]->name ||
+						Games[i]->start_point); i++) {
+			freePSG(Games[i]);
+		}
+		free(Games);
+	}
 }
 
 int
-rmDupInArrOfPointers(char *pa[], int n)
+rmDupInPP(char **pa, int n)
 { 
     if (n == 0 || n == 1)
         return n;
@@ -151,7 +161,10 @@ rmDupInArrOfPointers(char *pa[], int n)
 int
 isExist(const char *path)
 {
-	if (!access(path, F_OK)) {
+	FILE *fd;
+
+	if ((fd=fopen(path, "r"))) {
+		fclose(fd);
 		return 1;
 	}
 
@@ -245,7 +258,7 @@ isExcludeName(const char *path)
 }
 
 int
-isStartPoint(const char *filePath)
+isStartPoint(const char *filePath, const char *gameName)
 {
 	int i;
 	char *fileName;
@@ -262,7 +275,7 @@ isStartPoint(const char *filePath)
 		"run.sh", "run-game.sh", "rungame.sh",
 		"run", "runit", "run-game", "rungame",
 		"runme", "runme.sh",
-		gameName, sh, x86_64, x64, x86,
+		(char *)gameName, sh, x86_64, x64, x86,
 		"launcher", "launcher.sh", "launcher.x64", "launcher.x86_64", "launcher.x86" };
 
 	if (isExecuteble(filePath)) {
@@ -274,6 +287,21 @@ isStartPoint(const char *filePath)
 	}
 
 	return 0;
+}
+
+int
+isGameEntryUniq(struct Game_rec **ppGames, struct Game_rec *pGame)
+{
+	int cached_count = countGameEntries(ppGames);
+	if (ppGames && pGame) {
+		for (int i = 0; ppGames[i]; i++) {
+			if (gecmp(ppGames[i], pGame) == 0) {
+				return 0;
+			}
+		}
+	}
+
+	return 1;
 }
 
 int
@@ -300,39 +328,51 @@ getLenOfPP(char **pp)
 {
 	int ret = 0;
 
-	while (*pp++)
-		ret++;
+	if (pp) {
+		while (*pp++)
+			ret++;
+	}
 
 	return ret;
 }
 
 void
-printGameEntry(int id)
+printGameEntry(struct Game_rec *Game)
 {
-	printf("\n######################################\n");
-	printf(" id          - %d\n", id);
-	printf(" name        - %s\n", Game[id].name);
-	printf(" location    - %s\n", Game[id].location);
-	printf(" start point - %s\n", Game[id].starPoint);
-	printf("######################################\n\n");
+	if (Game) {
+		printf("\n######################################\n");
+		printf(" id          - %d\n", Game->id);
+		printf(" name        - %s\n", Game->name);
+		printf(" location    - %s\n", Game->location);
+		printf(" start point - %s\n", Game->start_point);
+		printf("######################################\n\n");
+
+		fflush(stdout);
+	} else {
+		warn("Cant print game entry: entry dose not exist");
+	}
 }
 
 int
-checkGameEntry(int id)
+isBrokenGameEntry(struct Game_rec *Game)
 {
 	short eflag = 0;
 
-	if (!isExist(Game[id].location)) {
+	if (!Game) {
+		return -1;
+	}
+
+	if (!isExist(Game->location)) {
 		/* warn("Game location dont exist"); */
 		eflag |= G_NOLOC;
 	}
 		
-	if (!isStartPoint(Game[id].starPoint)) {
+	if (!isStartPoint(Game->start_point, Game->name)) {
 		/* warn("Game start point dont exist"); */
 		eflag |= G_NOSP;
 	}
 
-	if (Game[id].name) {
+	if (!Game->name) {
 		/* warn("Game dont hame name"); */
 		eflag |= G_NONAME;
 	}
@@ -341,25 +381,72 @@ checkGameEntry(int id)
 }
 
 int
-editGameEntry(int id, const char *name, const char *location, const char *startPoint)
+add_game(Game_rec newrec)
 {
-	if (id < 0 || id > MAX_GAMES) {
-		warn("ID of game entry is out of range");
+	Game_rec *grp;
+
+	if(gr_tab.game_rec == NULL) {
+		gr_tab.game_rec =
+			(Game_rec *)malloc(GR_INIT * sizeof(Game_rec));
+		if (gr_tab.game_rec == NULL)
+			return -1;
+		gr_tab.max = GR_INIT;
+		gr_tab.ngames = 0;
+	} else if (gr_tab.ngames >= gr_tab.max) {
+		grp = (Game_rec *)realloc(gr_tab.game_rec,
+				(GR_GROW*gr_tab.max) * sizeof(Game_rec));
+		if (grp == NULL)
+			return -1;
+		gr_tab.max *= GR_GROW;
+		gr_tab.game_rec = grp;
+	}
+	gr_tab.game_rec[gr_tab.ngames] = newrec;
+
+	return gr_tab.ngames++;
+}
+
+int
+del_game(int id)
+{
+	int i;
+
+	for (i = 0; i < gr_tab.max; i++) {
+		if (gr_tab.game_rec[i].id == id) {
+			memmove(gr_tab.game_rec+i, gr_tab.game_rec+i+1,
+					(gr_tab.ngames-(i+1)) * sizeof(Game_rec));
+			gr_tab.ngames--;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+
+int
+addGameEntry(struct Game_rec *Game, const char *name, const char *location, const char *startPoint)
+{
+	if (!Game) {
+		warn("NO memory allocated for new game entry");
 		return -1;
 	}
 
+	Game->id = 0;
+
+	return editGameEntry(Game, name, location, startPoint);
+}
+
+int
+editGameEntry(struct Game_rec *Game, const char *name, const char *location, const char *startPoint)
+{
 	int len, n = 0;
 
 	if (name) {
 		len = strlen(name) + 1;
 
-		if (Game[id].name) {
-			free(Game[id].name);
-		}
-
-		Game[id].name = (char *)malloc(len);
-		if (Game[id].name) {
-			memcpy(Game[id].name, name, len);
+		Game->name = (char *)realloc(Game->name, len);
+		if (Game->name) {
+			memcpy(Game->name, name, len);
 			n++;
 		}
 	}
@@ -367,13 +454,9 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 	if (location) {
 		len = strlen(location) + 1;
 
-		if (Game[id].location) {
-			free(Game[id].location);
-		}
-
-		Game[id].location = (char *)malloc(len);
-		if (Game[id].location) {
-			memcpy(Game[id].location, location, len);
+		Game->location = (char *)realloc(Game->location, len);
+		if (Game->location) {
+			memcpy(Game->location, location, len);
 			n++;
 		}
 	}
@@ -381,13 +464,9 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 	if (startPoint) {
 		len = strlen(startPoint) + 1;
 
-		if (Game[id].starPoint) {
-			free(Game[id].starPoint);
-		}
-
-		Game[id].starPoint = (char *)malloc(len);
-		if (Game[id].starPoint) {
-			memcpy(Game[id].starPoint, startPoint, len);
+		Game->start_point = (char *)realloc(Game->start_point, len);
+		if (Game->start_point) {
+			memcpy(Game->start_point, startPoint, len);
 			n++;
 		}
 	}
@@ -395,32 +474,28 @@ editGameEntry(int id, const char *name, const char *location, const char *startP
 	return n;
 }
 
-void
-wipeGameEntry(int id)
+int
+countGameEntries(struct Game_rec **Games)
 {
-	if (Game[id].name) {
-		free(Game[id].name);
-	}
+	int c;
+	for (c = 0; Games[c]; c++)
+		;
 
-	if (Game[id].location) {
-		free(Game[id].location);
-	}
-
-	if (Game[id].starPoint) {
-		free(Game[id].starPoint);
-	}
-
-	if (isdigit(Game[id].id)) {
-		Game[id].id = -1;
-	}
+	return c;
 }
 
 int
-gecmp(struct game src, struct game dst)
+gecmp(struct Game_rec *src, struct Game_rec *dst)
 {
-	if (strcmp(src.location, dst.location) == 0 &&
-			strcmp(src.name, dst.name) == 0 &&
-			strcmp(src.starPoint, dst.starPoint) == 0) {
+	if (src->location || dst->location ||
+		src->name || dst->name ||
+		src->start_point || dst->start_point) {
+		return -1;
+	}
+
+	if (strcmp(src->location, dst->location) == 0 &&
+			strcmp(src->name, dst->name) == 0 &&
+			strcmp(src->start_point, dst->start_point) == 0) {
 		return 0;
 	}
 
@@ -429,7 +504,7 @@ gecmp(struct game src, struct game dst)
 
 
 int
-gecpy(struct game dst, struct game src)
+gecpy(struct Game_rec *dst, struct Game_rec *src)
 {
-	return editGameEntry(dst.id, src.name, src.location, src.starPoint);
+	return editGameEntry(dst, src->name, src->location, src->start_point);
 }

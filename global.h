@@ -6,16 +6,24 @@
 #define MAX_EXCEPTIONS  1000
 #define MAX_INCLUSIONS  MAX_EXCEPTIONS
 
-struct game {
+typedef struct Game_rec Game_rec;
+struct Game_rec {
 	int id;
 	char *name;
 	char *location;
-	char *starPoint;
+	char *start_point;
 };
 
-extern struct game Game[MAX_GAMES+1];
-extern char *gameName;
+struct Gr_tab {
+	int ngames;
+	int max;
+	Game_rec *game_rec;
+};
+
+enum { GR_INIT = 1, GR_GROW = 2 };
+
 extern char *cachePath;
+extern struct Gr_tab gr_tab;
 
 extern char **exceptionName;
 /* extern char *exceptionPath[MAX_EXCEPTIONS]; */

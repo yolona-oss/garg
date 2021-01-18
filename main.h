@@ -3,10 +3,6 @@
 
 extern char *argv0;
 
-char *searchSP(const char *location);
-int findGames(const char *path, int id);
-int scan(const char *path);
-
-void usage();
+static void usage();
 
 #endif
