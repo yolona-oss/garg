@@ -1,15 +1,15 @@
-CC=ccache gcc
+CC = ccache gcc
 
 INC     =
 LDFLAGS =
-LDLIBS  = -l config #$(shell `pkg-config --libs libconfig`)
+LDLIBS  = $(shell pkg-config --libs libconfig)
 
-CFLAGS  = -g -c -Wall -xc -O2 $(INC)
+CFLAGS  = -g -c -Wall -xc -O0 $(INC)
 CFLAGS +=
 
-SOURCES =main.c util.c scan.c ccread.c
-OBJECTS =$(SOURCES:.c=.o)
-EXECUTABLE =$(shell basename `pwd`)
+SOURCES    = main.c util.c eprintf.c gamerec.c scan.c ccread.c
+OBJECTS    = $(SOURCES:.c=.o)
+EXECUTABLE = $(shell basename `pwd`)
 
 all: options $(SOURCES) $(EXECUTABLE)
 
@@ -22,10 +22,10 @@ options:
 	@echo "CC	    = $(CC)"
 		
 $(EXECUTABLE): $(OBJECTS) 
-		$(CC) $(LDFLAGS) $(OBJECTS) -o $@ $(LDLIBS)
+	$(CC) $(LDFLAGS) $(OBJECTS) -o $@ $(LDLIBS)
 
 .c.o:
-		$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< -o $@
 		
 install: all
 	cp -f $(EXECUTABLE) /usr/local/bin/$(EXECUTABLE)

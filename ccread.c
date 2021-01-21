@@ -7,73 +7,97 @@
 #include <limits.h>
 #include <libconfig.h>
 
-#include "global.h"
+#include "main.h"
 #include "ccread.h"
 #include "util.h"
+#include "eprintf.h"
+#include "gamerec.h"
 
-char **exceptionName;
-/* char *exceptionPath[MAX_EXCEPTIONS]; */
-/* char *inclusions[MAX_INCLUSIONS]; */
+/* func */
+static char *findConfigFile(void);
+static char *initCacheFile(void);
+static int isCached(const char *path, Game_rec gr);
+static void cache_trim(const char *path);
+static int config_read_exeptions(const char *confPath);
 
-int
-isCached(const char *path, struct Game_rec *Game)
+/* vars */
+struct Gr_tab gr_tab;
+
+/* If gr aready exists in file, function
+ * returns position of elem in file. */
+static int
+isCached(const char *path, Game_rec gr)
 {
 	int n, total;
-	struct Game_rec *bufGE;
+	struct Game_rec *buf;
 
-	total = readGameEntriesCountFromFile(path);
+	total = cache_get_length(path);
 
 	for (n = 0; n < total; n++) {
-		bufGE = readGameEntryFromFile(path, n);
-		if (bufGE && gecmp(Game, bufGE) == 0) {
-			freePSG(bufGE);
-			return 1;
+		buf = cache_get_record(path, n);
+		if (buf && grcmp(gr, *buf) == 0) {
+			grp_free(buf);
+			return n+1;
 		}
-		free(bufGE->location);
-		free(bufGE->name);
-		free(bufGE->start_point);
+
+		grp_free(buf);
 	}
 
 	return 0;
 }
 
-void
-trimCache(const char *path)
+static void
+cache_trim(const char *path)
 {
-	struct Game_rec *g_buf;
-	int cn = 0;
+	struct Game_rec *buf;
+	int n, crec;
 
-	printf(" [!!] TRIMING\n"); fflush(stdout);
-
-	while ((g_buf=readGameEntryFromFile(path, cn)))
+	crec = cache_get_length(path);
+	for (n = 0; n < crec; n++)
 	{
-		printf("LOOP\n"); fflush(stdout);
-		if (isCached(path, g_buf)) {
-			printf("deleting\n"); fflush(stdout);
-			deleteGameEntryFromFile(path, cn);
+		buf = cache_get_record(path, n);
+		if (!buf) {
+			continue;
 		}
-		free(g_buf->location);
-		free(g_buf->name);
-		free(g_buf->start_point);
-		cn++;
+
+		if (isCached(path, *buf) != (n+1)) {
+			cache_delete_record(path, n);
+
+			if (!n) n--;
+			crec--;
+		}
+
+		grp_free(buf);
 	}
 }
 
-char *
+//Returns ~/.config/ga-org.conf if the file exists or
+//of path specified by command line argument if the file exists.
+static char *
 findConfigFile(void)
 {
 	int len;
 	char tmp[PATH_MAX];
 	char *path = NULL;
 
-	if (userConf && isExist(userConf)) {
-		len = strlen(userConf) + 1;
-		path = (char *)malloc(len);
-		memcpy(path, userConf, len);
-	} else {
-		len = sprintf(tmp, "%s/%s", getenv("HOME"), ".config/ga-org.conf") + 1;
-		if (isExist(tmp)) {
-			path = (char *)malloc(len);
+	if (userConf) {
+		if (!isExist(userConf)) {
+			warn("Wrong config path: \"%s\". No such file", userConf);
+		} else {
+			len = strlen(userConf) + 1;
+			path = (char *)emalloc(len);
+			if (path) {
+				memcpy(path, userConf, len);
+			}
+
+			return path;
+		}
+	}
+
+	len = esnprintf(tmp, sizeof(tmp), "%s/%s", getenv("HOME"), ".config/ga-org.conf") + 1;
+	if (isExist(tmp)) {
+		path = (char *)emalloc(len);
+		if (path) {
 			memcpy(path, tmp, len);
 		}
 	}
@@ -81,28 +105,39 @@ findConfigFile(void)
 	return path;
 }
 
-char *
+//Check cache file(~/cache/ga-org.conf) for existence
+//Create if dont and add libconfig constructions
+static char *
 initCacheFile(void)
 {
 	char tmp[PATH_MAX];
 	char *path;
 
-	/* CAT_WITH_HOME(".cache/ga-org.conf", path, tmp); */
-	int len = sprintf(tmp, "%s/%s", getenv("HOME"), ".cache/ga-org.conf") + 1;
-	path = (char *)malloc(len);
+	int len = esnprintf(tmp, sizeof(tmp), "%s/%s", getenv("HOME"), ".cache/ga-org.conf") + 1;
+	path = (char *)emalloc(len);
+	if (!path) {
+		return NULL;
+	}
 	memcpy(path, tmp, len);
 
+	if (!isExist(path)) {
+		FILE *fd;
+		if (!(fd=fopen(path, "w"))) {
+			warn("fopen:");
+			return NULL;
+		}
+		fclose(fd);
+	}
+	
 	config_t cfg;
 	config_setting_t *root, *games;
 
 	config_init(&cfg);
 
-	config_set_option(&cfg, CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS|
-			CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE|
-			CONFIG_OPTION_FSYNC, 0);
+	config_set_option(&cfg, _config_write_options, 0);
 
 	if (!config_read_file(&cfg, path)) {
-		warn("Reading cache file: \"%s\" error:%d - %s", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+		_config_err(&cfg);
 		return NULL;
 	}
 
@@ -126,10 +161,12 @@ initCacheFile(void)
 	return path;
 }
 
-struct Game_rec *
-readGameEntryFromFile(const char *path, int n)
+//Return record number "n"
+//from cache->games group
+//in file "path".
+Game_rec *
+cache_get_record(const char *path, int n)
 {
-	printf("READING GE from file\n"); fflush(stdout);
 	const char *location, *name, *sp;
 	int id;
 
@@ -157,7 +194,6 @@ readGameEntryFromFile(const char *path, int n)
 		return NULL;
 	}
 
-	printf(" read cache entry №: %d\n", n); fflush(stdout);
 	elem = config_setting_get_elem(games, n);
 
 	if (!elem) {
@@ -172,37 +208,28 @@ readGameEntryFromFile(const char *path, int n)
 		return NULL;
 	}
 
-	struct Game_rec *GE;
-	int len;
+	Game_rec *grp;
+	grp = (Game_rec *)ecalloc(1, sizeof *grp + 1);
+	if (!grp) {
+		return NULL;
+	}
 
-	GE = (struct Game_rec *)calloc(1, sizeof(struct Game_rec *));
-	GE->id = id;
-
-	len = strlen(location) + 1;
-	GE->location = (char *)calloc(len, sizeof(char));
-	if (GE->location) memcpy(GE->location, location, len);
-	else warn("malloc:");
-
-	len = strlen(name) + 1;
-	GE->name = (char *)calloc(len, sizeof(char));
-	if (GE->name) memcpy(GE->name, name, len);
-	else warn("malloc:");
-
-	len = strlen(sp) + 1;
-	GE->start_point = (char *)calloc(len, sizeof(char));
-	if (GE->start_point) memcpy(GE->start_point, sp, len);
-	else warn("malloc:");
+	grp->id = id;
+	grp->location = estrdup(location);
+	grp->name = estrdup(name);
+	grp->start_point = estrdup(sp);
 
 	config_destroy(&cfg);
 
-	return GE;
+	return grp;
 }
 
+//Get number of elements
+//cache->games group in file "path".
 int
-readGameEntriesCountFromFile(const char *path)
+cache_get_length(const char *path)
 {
-	printf("Reading entries count\n"); fflush(stdout);
-	int c = 0;
+	int c;
 
 	config_t cfg;
 	config_setting_t *root, *games;
@@ -224,6 +251,7 @@ readGameEntriesCountFromFile(const char *path)
 
 	games = config_setting_lookup(root, "games");
 
+	c = 0;
 	if (games) {
 		c = config_setting_length(games);
 	} else {
@@ -232,18 +260,15 @@ readGameEntriesCountFromFile(const char *path)
 	}
 
 	config_destroy(&cfg);
-	printf("END Reading entries count: %d.\n", c);
 
 	return c;
 }
 
 int
-writeGameEntryToFile(const char *path, struct Game_rec *GE)
+cache_put_record(const char *path, struct Game_rec *GE)
 {
-	printf("WRITING TO CACHE\n"); fflush(stdout);
-
 	if (!GE) {
-		warn("GE is not exist");
+		warn("GR is not exist!");
 		return -1;
 	}
 
@@ -271,9 +296,7 @@ writeGameEntryToFile(const char *path, struct Game_rec *GE)
 		return -1;
 	}
 
-	config_set_option(&cfg, CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS|
-			CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE|
-			CONFIG_OPTION_FSYNC, 0);
+	config_set_option(&cfg, _config_write_options, 0);
 	config_set_tab_width(&cfg, 4);
 
 	group = config_setting_add(games, NULL, CONFIG_TYPE_GROUP);
@@ -299,13 +322,13 @@ writeGameEntryToFile(const char *path, struct Game_rec *GE)
 
 	config_destroy(&cfg);
 	
-	printf(" [SS] WR SUCC\n");
-
 	return 0;
 }
 
+//Delete game record number "n"
+//in file "path".
 int
-deleteGameEntryFromFile(const char *path, int n)
+cache_delete_record(const char *path, int n)
 {
 	config_t cfg;
 	config_setting_t *root, *games;
@@ -332,9 +355,7 @@ deleteGameEntryFromFile(const char *path, int n)
 		return -1;
 	}
 
-	config_set_option(&cfg, CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS|
-			CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE|
-			CONFIG_OPTION_FSYNC, 0);
+	config_set_option(&cfg, _config_write_options, 0);
 	config_set_tab_width(&cfg, 4);
 
 	config_setting_remove_elem(games, n);
@@ -346,20 +367,23 @@ deleteGameEntryFromFile(const char *path, int n)
 	return 0;
 }
 
-int
-readExceptions(const char *confPath)
+static int
+config_read_exeptions(const char *confPath)
 {
 	int i, c, len, ind;
 	config_t cfg;
 	config_setting_t *setting, *setting_names;
 
-	exceptionName = (char **)calloc(MAX_EXCEPTIONS+1, sizeof(char));
+	exceptionName = (char **)ecalloc(MAX_EXCEPTIONS+1, sizeof(char));
+	if (!exceptionName) {
+		return -1;
+	}
 
 	ind = 0;
 	/* default exceptions */
-	exceptionName[ind] = (char *)calloc(9, sizeof(char));
+	exceptionName[ind] = (char *)ecalloc(9, sizeof(char));
 	strcpy(exceptionName[ind++], "^Steam$");
-	exceptionName[ind] = (char *)calloc(13, sizeof(char));
+	exceptionName[ind] = (char *)ecalloc(13, sizeof(char));
 	strcpy(exceptionName[ind++], "^[.]wine\\w*");
 
 	config_init(&cfg);
@@ -387,7 +411,7 @@ readExceptions(const char *confPath)
 		for (i = 0; i < c; i++) {
 			const char *exc = config_setting_get_string_elem(setting_names, i);
 			len = strlen(exc) + 1;
-			exceptionName[ind] = (char *)malloc(len);
+			exceptionName[ind] = (char *)emalloc(len);
 			if (exceptionName[ind]) {
 				memcpy(exceptionName[ind++], exc, len);
 			}
@@ -396,7 +420,7 @@ readExceptions(const char *confPath)
 
 	config_destroy(&cfg);
 
-	rmDupInPP(exceptionName, ind);
+	pp_delete_dup(exceptionName, ind);
 
 	return ind;
 }
@@ -409,11 +433,12 @@ readConfig(void)
 	printf("Reading config file...\n"); fflush(stdout);
 
 	if (!(cfgPath = findConfigFile())) {
-			return -1;
+		warn("No config file!");
+		return -1;
 	}
 
-	if (readExceptions(cfgPath) == -1) {
-		warn("Cant read exceptions");
+	if (config_read_exeptions(cfgPath) == -1) {
+		warn("Cant read exceptions!");
 	}
 
 	free(cfgPath);
@@ -421,89 +446,75 @@ readConfig(void)
 	return 1;
 }
 
-struct Game_rec **
-readCache(struct Game_rec **Games)
+int
+readCache()
 {
-	int n, id, count;
+	int n, c_rec;
 	char *cchPath;
-	struct Game_rec *GE;
+	Game_rec *GR;
 
 	printf("Reading cache...\n"); fflush(stdout);
 
 	if (!(cchPath=initCacheFile())) {
-		warn("Cant init cache file.");
-		return NULL;
+		warn("Cant read cache!");
+		return -1;
 	}
 
-	count = readGameEntriesCountFromFile(cchPath);
-	for (id = n = 0; n < count; n++)
+	cache_trim(cchPath);
+
+	c_rec = cache_get_length(cchPath);
+	for (n = 0; n < c_rec; n++)
 	{
-		GE = readGameEntryFromFile(cchPath, n);
+		GR = cache_get_record(cchPath, n);
 
-		printf("Adding\n"); fflush(stdout);
-
-		if (!GE) {
-			printf(" [EE] NULL GE\n");
+		if (!GR) {
+			continue;
+		} else if (gr_is_dup(*GR)) {
+			grp_free(GR);
 			continue;
 		}
 
-		if (!isGameEntryUniq(Games, GE)) {
-			printf(" skipping exist entry");
-			continue;
-		}
-
-		if (isBrokenGameEntry(GE) == 0) {
-			printf(" [SS] True\n");
-			Games[id] = (struct Game_rec *)calloc(1, sizeof(struct Game_rec));
-			if (addGameEntry(Games[id], GE->name, GE->location, GE->start_point) == 3)
-				id++;
+		if (gr_is_broken(GR) == 0) {
+			gr_add(*GR);
 		} else {
-			printf(" Deleting game entry form cache\n"); fflush(stdout);
-			deleteGameEntryFromFile(cchPath, n);
-			if (!n)
-				n--;
-			count--;
+			cache_delete_record(cchPath, n);
+			grp_free(GR);
+
+			if (!n) n--;
+			c_rec--;
+
+			//skiping free(GR)
+			continue;
 		}
 
-		freePSG(GE);
+		free(GR);
 	}
-
-	printf("End reading cache.\n");
-
-	printf("FOUNd in CACHE:");
-	for (int i = id-1; i >= 0; i--)
-		printGameEntry(Games[i]);
-	printf("END FOUNT IN CACHE.\n\n");
-
-	free(cchPath);
 	
-	return Games;
+	free(cchPath);
+
+	return 1;
 }
 
 int
-writeCache(struct Game_rec **Games)
+writeCache(void)
 {
-	int i, count, uniq;
+	int i;
 	char *cchPath;
 
 	printf("Writing cache...\n"); fflush(stdout);
 
 	if (!(cchPath=initCacheFile())) {
-		warn("Cant init cache file.");
+		warn("Cant write cache.");
 		return -1;
 	}
 
-	i = 0;
-	while (Games[i]->start_point)
+	for (i = 0; i < gr_tab.ngames; i++)
 	{
-		uniq = 1;
-		printf("cache read loop\n");
-
-		if (isCached(cchPath, Games[i])) {
+		if (isCached(cchPath, gr_tab.game_rec[i])) {
 			continue;
 		}
 
-		writeGameEntryToFile(cchPath, Games[i++]);
+		cache_put_record(cchPath, &gr_tab.game_rec[i++]);
 	}
 
 	free(cchPath);

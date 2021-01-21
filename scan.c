@@ -1,24 +1,38 @@
+#if defined(unix) || defined(__unix__) || defined(__unix)
+	#define _GNU_SOURCE
+#else
+	#include <libgen.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
-#include <libgen.h>
 
-#include "scan.h"
-#include "global.h"
+#include "main.h"
+#include "eprintf.h"
 #include "util.h"
 #include "ccread.h"
+#include "gamerec.h"
 
-struct Gr_tab gr_tab;
+/* funcs */
+static char **get_file_list(const char *path);
+static char *scan_for_sp(const char *location, const char *gameName);
+static int scan_inclusions(const char *location);
+static int find_games(const char *path);
 
-char **
-getFileList(const char *path, int *count)
+/* vars */
+extern struct Gr_tab gr_tab;
+
+static char **
+get_file_list(const char *path)
 {
 	struct dirent **namelist;
 	char **ret;
+	char *buf;
 
 	char rpath[PATH_MAX];
-	int n = 0, c, len;
+	int n, c, len;
 
 	n = scandir(path, &namelist, NULL, alphasort);
 	if (n == -1) {
@@ -26,9 +40,8 @@ getFileList(const char *path, int *count)
 		return NULL;
 	}
 
-	ret = (char **)malloc(sizeof(char **) * (n+1));
+	ret = (char **)ecalloc(n, sizeof(char **));
 	if (!ret) {
-		warn("malloc:");
 		return NULL;
 	}
 
@@ -36,48 +49,42 @@ getFileList(const char *path, int *count)
 	while (n--)
 	{
 		if (!isDotName(namelist[n]->d_name)
-				&& getRPath(namelist[n]->d_name, path, rpath)) {
+				&& realpath((buf=cat_fnames(path, namelist[n]->d_name)), rpath)) {
 			len = strlen(rpath) + 1;
-			if ((ret[c] = (char *)malloc(sizeof(char *) * len))) {
+			ret[c] = (char *)emalloc(sizeof(char *) * len);
+			if (ret[c]) {
 				memcpy(ret[c++], rpath, len);
-			} else {
-				warn("malloc:");
 			}
+			free(buf);
 		}
 
 		free(namelist[n]);
 	}
 	free(namelist);
 
-	*count = c;
+	ret[c] = NULL;
 
 	return ret;
 }
 
-char *
-searchSP(const char *location, const char *gameName)
+/* TODO add subdir search */
+static char *
+scan_for_sp(const char *location, const char *gameName)
 {
-	int ecount, i, stat, len;
+	int i, stat, len;
 	char *sp = NULL;
-	char **list;
+	char **list = NULL;
 
-	char **dirs = NULL;
-
-	int i_d;
-	i_d = 0;
-
-	allerMsg("    [II] Scanning %s\n", location);
-
-	if (!(dirs = (char **)malloc(sizeof(char **) * 10000))) {
-		warn("malloc:");
-		return NULL;
-	}
+	/* char **dirs = NULL; */
+	/* dirs = (char **)emalloc(sizeof(char **) * 100); */
+	/* if (!dirs) { */
+	/* 	return NULL; */
+	/* } */
 	
-	list = getFileList(location, &ecount);
+	list = get_file_list(location);
 
-	for (i = 0; i < ecount; i++)
+	for (i = 0; list[i]; i++)
 	{
-		allerMsg("      [II] Checking file %s\n", list[i]);
 		if (!isExcludeName(list[i]))
 		{
 			if ((stat = isDirectory(list[i]))) {
@@ -87,10 +94,9 @@ searchSP(const char *location, const char *gameName)
 			} else if (stat == 0) {
 				if (isStartPoint(list[i], gameName)) {
 					len = strlen(list[i]) + 1;
-					if ((sp = (char *)malloc(len))) {
+					sp = (char *)emalloc(len);
+					if (sp) {
 						memcpy(sp, list[i], len);
-					} else {
-						warn("malloc:");
 					}
 					break;
 				}
@@ -98,107 +104,114 @@ searchSP(const char *location, const char *gameName)
 		}
 	}
 
-	freePP(list, ecount);
-	freePP(dirs, i_d);
-
-	/* if (!sp) { */
-	/* 	for (i = 0; i < i_d; i++) { */
-	/* 		sp = searchSP(dirs[i]); */
-	/* 	} */
-	/* } */
+	pp_free(list, i);
+	/* pp_free(dirs); */
 
 	return sp;
 }
 
-//try use nftw instead loop
-int
-findGames(const char *path, struct Game_rec **Games)
+/* TODO */
+static int
+scan_inclusions(const char *location)
 {
-	int curID, globID;
-	char rpath[PATH_MAX];
-	char *startPoint, *gameName;
-
-	DIR *d;
-	struct dirent *dir;
-
-	struct Game_rec *bufGame;
-
-	printf("Finding games...\n");
-
-	if (!(d = opendir(path))) {
-		warn("Cant open dir: %s:", path);
-		return -1;
-	}
-
-	globID = countGameEntries(Games);
-
-	curID = 0;
-	while ((dir = readdir(d)))
-	{
-		if (isDotName(dir->d_name)
-				|| !getRPath(dir->d_name, path, rpath)
-				|| isExcludeName(rpath)) {
-			continue;
-		}
-
-		if (isDirectory(rpath)) {
-			gameName = basename(rpath);
-
-			/* need check for existence in cache */
-			startPoint = searchSP(rpath, gameName);
-
-			if (startPoint) {
-				bufGame = (struct Game_rec *)calloc(1, sizeof(struct Game_rec));
-				addGameEntry(bufGame, gameName, rpath, startPoint);
-				if (bufGame && isGameEntryUniq(Games, bufGame)) {
-					Games[globID] = (struct Game_rec *)calloc(1, sizeof(struct Game_rec));
-					if ((Games[globID]) &&
-								addGameEntry(Games[globID], gameName, rpath, startPoint) == 3) {
-							globID++;
-							curID++;
-					} else {
-						warn("Cant add game entry");
-					}
-				}
-
-				if (bufGame)
-					freePSG(bufGame);
-				free(startPoint);
-			}
-		}
-	}
-
-	if (closedir(d) == -1) {
-		warn("Cant close dir: %s:", path);
-		return -1;
-	}
-
-	return globID - 1;
-}
-
-
-int
-scan(const char *path, struct Game_rec **Games)
-{
-	char rpath[PATH_MAX];
-
-	if (!getRPath("", path, rpath)) {
-		return -1;
-	}
-
-	if(!isDirectory(rpath)) {
-		warn("\"%s\": its not directory", rpath);
-		return -1;
-	}
-
-	readConfig();
-	/* readCache(Games); */
-	findGames(path, Games);
-
-	/* trimCache("/home/xewii/.cache/ga-org.conf"); */
-	/* writeCache(Games); */
 
 	return 0;
 }
 
+unsigned int
+str_to_int(const char *str)
+{
+	unsigned int ret = 0;
 
+	if (!str) {
+		return -1;
+	}
+
+	for (int i = 0; str[i]; i++) {
+		ret += (char)str[i];
+	}
+
+	return ret;
+}
+
+/* Finding games in all directories in "path"
+ * with depth 1 */
+static int
+find_games(const char *path)
+{
+	int i;
+	char *start_point, *game_name;
+	/* Game_rec *gr; */
+	Game_rec gr;
+
+	printf("Finding games...\n"); fflush(stdout);
+
+	char **list = get_file_list(path);
+	if (!list) {
+		return -1;
+	}
+
+	for (i = 0; list[i]; i++) {
+		if (!isDirectory(list[i])
+			|| isExcludeName(list[i])) {
+			continue;
+		}
+
+		game_name = basename(list[i]);
+		start_point = scan_for_sp(list[i], game_name);
+
+		if (start_point)
+		{
+			/* gr_init(gr, game_name, list[i], start_point, NULL); */
+			gr.location = estrdup(list[i]);
+			gr.name = estrdup(game_name);
+			gr.start_point = estrdup(start_point);
+			gr.id = str_to_int(game_name);
+
+			if (!gr_is_dup(gr)) {
+				if (gr_add(gr) < 0) {
+					warn("Cant add game!");
+					free(gr.location);
+					free(gr.name);
+					free(gr.start_point);
+				}
+			} else {
+				free(gr.location);
+				free(gr.name);
+				free(gr.start_point);
+			}
+
+			free(start_point);
+		}
+	}
+
+	pp_free(list, i);
+
+	return 0;
+}
+
+int
+scan(const char *path)
+{
+	char rpath[PATH_MAX];
+
+	if (!realpath(path, rpath)) {
+		warn("Aborting scan!");
+		return -1;
+	}
+
+	if(!isDirectory(rpath)) {
+		warn("\"%s\": its not directory! Aborting scan!", rpath);
+		return -1;
+	}
+
+	/* TODO */
+	scan_inclusions(NULL);
+
+	readConfig();
+	readCache();
+	find_games(rpath);
+	writeCache();
+
+	return 0;
+}

@@ -1,81 +1,87 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "main.h"
-#include "global.h"
 #include "util.h"
-#include "scan.h"
+#include "eprintf.h"
+#include "gamerec.h"
 
+/* vars */
 char *userConf;
+char *cachePath;
 
+char **exceptionName;
+char **exceptionPath;
+char **inclusions;
+
+/* TODO */
 static void
 usage(void)
 {
-	die("[-q|--quiet] [-c|--config] <DIR>(<DIR>...)");
+	die("-c <PATH> -[qd] <PATH>");
 }
 
 int
 main(int argc, char **argv)
 {
 	argv0 = *argv;
-	argv++;
 
 	g_qflag = 0;
 	g_dflag = 0;
 
-	for (int i = 0; *argv && (*argv)[0] == '-' && (*argv)[1]; i++, argc--, argv++)
-	{
-		//todo
-		if ((*argv)[1] == '-') {
-			*argv += 2;
-		} else {
-			(*argv)++;
-		}
+	char ch;
+	char *path = NULL;
 
-		if (strcmp(*argv, "c") == 0 ||
-				strcmp(*argv, "config") == 0)
-		{
-			int len = strlen(*argv) + 1;
-			userConf = (char *)malloc(len);
-			memcpy(userConf, *(++argv), len);
-		}
-		else if (strcmp(*argv, "q") == 0 ||
-				strcmp(*argv, "quiet") == 0) {
-			g_qflag = 1;
-		}
-		if (strcmp(*argv, "d") == 0 ||
-				strcmp(*argv, "debug") == 0) {
-			g_dflag = 1;
-		} else if (strcmp(*argv, "h") == 0 ||
-				strcmp(*argv, "help") == 0) {
-			usage();
-		} else {
-			warn("Unknown argument: \"%s\"", *argv);
-			usage();
+	struct option long_options[] = {
+		{ "config", required_argument, NULL, 'c' },
+		{ "quiet",  no_argument,       NULL, 'q' },
+		{ "debug",  no_argument,       NULL, 'd' },
+		{ "help",   no_argument,       NULL, 'h' },
+		{ "scan",   required_argument, NULL, 's' }
+	};
+
+	while ((ch = getopt_long(argc, argv, "s:c:qdh", long_options, NULL)) != -1) {
+		switch (ch) {
+			case 'c':
+				userConf = estrdup(optarg);
+				break;
+			case 'q':
+				g_qflag = 1;
+				break;
+			case 'd':
+				g_dflag = 1;
+				break;
+			case 's':
+				path = estrdup(optarg);
+				break;
+			case 'h':
+				usage();
+				break;
+			case '?':
+				usage();
+			default:
+				usage();
+				//TODO
+				break;
 		}
 	}
 
-	//try to use prepare()
-	int i;
-	struct Game_rec **Games;
-
-	if (!(Games = (struct Game_rec **)calloc(MAX_GAMES+1, sizeof(struct Game_rec *)))) {
-		warn("Cant alloc memory for Game struct\nmalloc:");
-		return 1;
-	}
+	//ncurece interface
 
 	//add multi path option
-	scan((*argv) ? *argv : ".", Games);
+	scan(path ? path : "./");
 
 	printf("##########[!END!]############");
-	i=0;
-	while (Games[i]) {
-		printGameEntry(Games[i++]);
+	for (int i = 0; i < gr_tab.ngames; i++) {
+		gr_print(&gr_tab.game_rec[i]);
 	}
 
-	freePPSG(&Games[0]);
-	freePP(exceptionName, getLenOfPP(exceptionName));
+	if (userConf) free(userConf);
+	if (path) free(path);
+	grt_free(gr_tab);
+	pp_free(exceptionName, pp_get_len(exceptionName));
 
-	return 0;
+	return EXIT_SUCCESS;
 }
