@@ -9,7 +9,6 @@
 #include <string.h>
 #include <dirent.h>
 
-#include "main.h"
 #include "eprintf.h"
 #include "util.h"
 #include "ccread.h"
@@ -17,7 +16,7 @@
 
 /* funcs */
 static char **get_file_list(const char *path);
-static char *scan_for_sp(const char *location, const char *gameName);
+static char *scan_for(const char *location, const char *gameName, int func(const char *, const char *));
 static int scan_inclusions(const char *location);
 static int find_games(const char *path);
 
@@ -69,18 +68,12 @@ get_file_list(const char *path)
 
 /* TODO add subdir search */
 static char *
-scan_for_sp(const char *location, const char *gameName)
+scan_for(const char *location, const char *gameName, int check(const char *, const char *))
 {
 	int i, stat, len;
-	char *sp = NULL;
+	char *ret = NULL;
 	char **list = NULL;
 
-	/* char **dirs = NULL; */
-	/* dirs = (char **)emalloc(sizeof(char **) * 100); */
-	/* if (!dirs) { */
-	/* 	return NULL; */
-	/* } */
-	
 	list = get_file_list(location);
 
 	for (i = 0; list[i]; i++)
@@ -88,26 +81,23 @@ scan_for_sp(const char *location, const char *gameName)
 		if (!isExcludeName(list[i]))
 		{
 			if ((stat = isDirectory(list[i]))) {
-				/* if ((dirs[i_d] = (char *)malloc(strlen(list[i]+1)))) { */
-				/* 	strcpy(dirs[i_d++], list[i]); */
-				/* } */
+				;
 			} else if (stat == 0) {
-				if (isStartPoint(list[i], gameName)) {
+				if (check(list[i], gameName)) {
 					len = strlen(list[i]) + 1;
-					sp = (char *)emalloc(len);
-					if (sp) {
-						memcpy(sp, list[i], len);
+					ret = (char *)emalloc(len);
+					if (ret) {
+						memcpy(ret, list[i], len);
+						break;
 					}
-					break;
 				}
 			}
 		}
 	}
 
-	pp_free(list, i);
-	/* pp_free(dirs); */
+	pp_free(list);
 
-	return sp;
+	return ret;
 }
 
 /* TODO */
@@ -118,39 +108,23 @@ scan_inclusions(const char *location)
 	return 0;
 }
 
-unsigned int
-str_to_int(const char *str)
-{
-	unsigned int ret = 0;
-
-	if (!str) {
-		return -1;
-	}
-
-	for (int i = 0; str[i]; i++) {
-		ret += (char)str[i];
-	}
-
-	return ret;
-}
-
 /* Finding games in all directories in "path"
  * with depth 1 */
 static int
 find_games(const char *path)
 {
 	int i;
-	char *start_point, *game_name;
-	/* Game_rec *gr; */
-	Game_rec gr;
+	char *sp = NULL, *uninst = NULL, *game_name;
+	Game_rec *gr;
 
-	printf("Finding games...\n"); fflush(stdout);
+	printf("Finding games...\n");
 
 	char **list = get_file_list(path);
 	if (!list) {
 		return -1;
 	}
 
+	/* TODO make run with depth 3 */
 	for (i = 0; list[i]; i++) {
 		if (!isDirectory(list[i])
 			|| isExcludeName(list[i])) {
@@ -158,36 +132,47 @@ find_games(const char *path)
 		}
 
 		game_name = basename(list[i]);
-		start_point = scan_for_sp(list[i], game_name);
+		if (!game_name) {
+			warn("basename:");
+			continue;
+		}
+		sp = scan_for(list[i], game_name, isStartPoint);
 
-		if (start_point)
+		if (sp)
 		{
-			/* gr_init(gr, game_name, list[i], start_point, NULL); */
-			gr.location = estrdup(list[i]);
-			gr.name = estrdup(game_name);
-			gr.start_point = estrdup(start_point);
-			gr.id = str_to_int(game_name);
+			uninst = scan_for(list[i], NULL, isUninstaller);
 
-			if (!gr_is_dup(gr)) {
-				if (gr_add(gr) < 0) {
-					warn("Cant add game!");
-					free(gr.location);
-					free(gr.name);
-					free(gr.start_point);
-				}
-			} else {
-				free(gr.location);
-				free(gr.name);
-				free(gr.start_point);
+			gr = gr_init(game_name, list[i], sp, uninst);
+			if (!gr) {
+				continue;
 			}
 
-			free(start_point);
+			if (!gr_is_dup(*gr)) {
+				gr_add(gr);
+				free(gr);
+			} else {
+				grp_free(gr);
+			}
+
+			free(sp);
+			if (uninst) free(uninst);
 		}
 	}
 
-	pp_free(list, i);
+	pp_nfree(list, i);
 
 	return 0;
+}
+
+void
+check_gr_tab(struct Gr_tab tab)
+{
+	int i;
+	struct Gr_prop prop;
+	for (i = 0; i < tab.ngames; i++) {
+		gr_get_props(&tab.game_rec[i], prop);
+		gr_set_props(&tab.game_rec[i], &prop);
+	}
 }
 
 int
@@ -208,10 +193,11 @@ scan(const char *path)
 	/* TODO */
 	scan_inclusions(NULL);
 
-	readConfig();
-	readCache();
+	db_read_settings();
+	db_read_cached_recs();
 	find_games(rpath);
-	writeCache();
+	check_gr_tab(gr_tab);
+	db_cache_recs();
 
 	return 0;
 }

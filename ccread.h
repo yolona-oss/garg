@@ -1,29 +1,24 @@
 #ifndef _CCREAD_H_
 #define _CCREAD_H_
 
-#define DEF_CACH_PTH ".cache/ga-org.conf"
-
 #define MAX_EXCEPTIONS  1000
 #define MAX_INCLUSIONS  MAX_EXCEPTIONS
 
-#define _config_err(cfg) warn("Reading cache file: \"%s\" error:%d - %s", config_error_file(cfg), config_error_line(cfg), config_error_text(cfg));
-#define _config_write_options CONFIG_OPTION_COLON_ASSIGNMENT_FOR_GROUPS\
-							  |CONFIG_OPTION_OPEN_BRACE_ON_SEPARATE_LINE\
-							  |CONFIG_OPTION_FSYNC
+#include <sqlite3.h>
 
 /* funcs */
-int cache_delete_record(const char *path, int n);
+int cache_delete_record(sqlite3 *db, int n);
 
-struct Game_rec *cache_get_record(const char *path, int n);
-int cache_put_record(const char *path, struct Game_rec *GE);
-int cache_get_length(const char *path);
+struct Game_rec *db_get_rec(const char *path, int n);
+int db_put_rec(sqlite3 *db, struct Game_rec *GE);
+int db_length(sqlite3 *db);
 
-int readConfig(void);
-int writeCache(void);
-int readCache(void);
+int db_read_settings(void);
+int db_cache_recs(void);
+int db_read_cached_recs(void);
 
 /* vars */
 extern struct Gr_tab gr_tab;
-extern char *userConf;
+extern char *g_user_db;
 
 #endif

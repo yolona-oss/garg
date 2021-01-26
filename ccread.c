@@ -5,120 +5,49 @@
 #include <string.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <libconfig.h>
+#include <math.h>
+#include <sqlite3.h>
 
-#include "main.h"
 #include "ccread.h"
 #include "util.h"
 #include "eprintf.h"
 #include "gamerec.h"
 
 /* func */
-static char *findConfigFile(void);
-static char *initCacheFile(void);
-static int isCached(const char *path, Game_rec gr);
-static void cache_trim(const char *path);
-static int config_read_exeptions(const char *confPath);
+static sqlite3 *db_init(void);
+/* static int isCached(const char *path, Game_rec gr); */
+/* static void cache_trim(const char *path); */
+static int db_read_exeptions(sqlite3 *db);
 
 /* vars */
 struct Gr_tab gr_tab;
 
 /* If gr aready exists in file, function
  * returns position of elem in file. */
-static int
-isCached(const char *path, Game_rec gr)
+/* static int */
+/* isCached(const char *path, Game_rec gr) */
+/* { */
+/* 	return 0; */
+/* } */
+
+/* static void */
+/* cache_trim(const char *path) */
+/* { */
+/* } */
+
+/* Check cache file(~/cache/garg.db) for existence */
+/* Create if dont and add libconfig constructions */
+static sqlite3 *
+db_init(void)
 {
-	int n, total;
-	struct Game_rec *buf;
+	char path[PATH_MAX];
 
-	total = cache_get_length(path);
-
-	for (n = 0; n < total; n++) {
-		buf = cache_get_record(path, n);
-		if (buf && grcmp(gr, *buf) == 0) {
-			grp_free(buf);
-			return n+1;
-		}
-
-		grp_free(buf);
-	}
-
-	return 0;
-}
-
-static void
-cache_trim(const char *path)
-{
-	struct Game_rec *buf;
-	int n, crec;
-
-	crec = cache_get_length(path);
-	for (n = 0; n < crec; n++)
-	{
-		buf = cache_get_record(path, n);
-		if (!buf) {
-			continue;
-		}
-
-		if (isCached(path, *buf) != (n+1)) {
-			cache_delete_record(path, n);
-
-			if (!n) n--;
-			crec--;
-		}
-
-		grp_free(buf);
-	}
-}
-
-//Returns ~/.config/ga-org.conf if the file exists or
-//of path specified by command line argument if the file exists.
-static char *
-findConfigFile(void)
-{
-	int len;
-	char tmp[PATH_MAX];
-	char *path = NULL;
-
-	if (userConf) {
-		if (!isExist(userConf)) {
-			warn("Wrong config path: \"%s\". No such file", userConf);
-		} else {
-			len = strlen(userConf) + 1;
-			path = (char *)emalloc(len);
-			if (path) {
-				memcpy(path, userConf, len);
-			}
-
-			return path;
+	if (!g_user_db) {
+		esnprintf(path, sizeof(path), "%s/%s", getenv("HOME"), ".cache/garg.db");
+		if (!path[0]) {
+			return NULL;
 		}
 	}
-
-	len = esnprintf(tmp, sizeof(tmp), "%s/%s", getenv("HOME"), ".config/ga-org.conf") + 1;
-	if (isExist(tmp)) {
-		path = (char *)emalloc(len);
-		if (path) {
-			memcpy(path, tmp, len);
-		}
-	}
-
-	return path;
-}
-
-//Check cache file(~/cache/ga-org.conf) for existence
-//Create if dont and add libconfig constructions
-static char *
-initCacheFile(void)
-{
-	char tmp[PATH_MAX];
-	char *path;
-
-	int len = esnprintf(tmp, sizeof(tmp), "%s/%s", getenv("HOME"), ".cache/ga-org.conf") + 1;
-	path = (char *)emalloc(len);
-	if (!path) {
-		return NULL;
-	}
-	memcpy(path, tmp, len);
 
 	if (!isExist(path)) {
 		FILE *fd;
@@ -129,84 +58,44 @@ initCacheFile(void)
 		fclose(fd);
 	}
 	
-	config_t cfg;
-	config_setting_t *root, *games;
+	char *err = 0;
+	sqlite3 *db;
+	/* db = (sqlite3 *)calloc(1, sizeof(struct sqlite3 *)); */
 
-	config_init(&cfg);
+	sqlite3_open(path, &db);
 
-	config_set_option(&cfg, _config_write_options, 0);
+	char *cr = "CREATE TABLE IF NOT EXISTS Games( \
+	 		id INT, \
+	 		'play_time' INT, \
+	 		name TEXT, \
+	 		icon TEXT, \
+	 		gener TEXT, \
+	 		location TEXT, \
+	 		start_point TEXT, \
+			start_argv TEXT, \
+			uninstaller TEXT, \
+			UNIQUE(Name));";
+	
+	int rc = sqlite3_exec(db, cr, 0, 0, &err);
 
-	if (!config_read_file(&cfg, path)) {
-		_config_err(&cfg);
+	if (rc != SQLITE_OK) {
+		fprintf(stderr, "Failed to create table\n");
+		fprintf(stderr, "SQL error: %s\n", err);
+		sqlite3_free(err);
 		return NULL;
 	}
 
-	root = config_root_setting(&cfg);
-
-	if (!root) {
-		warn("%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
-		return NULL;
-	}
-
-	if (config_setting_lookup(root, "games")) {
-		return path;
-	}
-
-	games = config_setting_add(root, "cache", CONFIG_TYPE_GROUP);
-	config_setting_add(games, "games", CONFIG_TYPE_LIST);
-	config_write_file(&cfg, path);
-
-	config_destroy(&cfg);
-
-	return path;
+	return db;
 }
 
-//Return record number "n"
-//from cache->games group
-//in file "path".
+/* Return record number "n" */
+/* from cache->games group */
+/* in file "path". */
 Game_rec *
-cache_get_record(const char *path, int n)
+db_get_rec(const char *path, int n)
 {
-	const char *location, *name, *sp;
-	int id;
-
-	config_t cfg;
-	config_setting_t *root, *games, *elem;
-
-	config_init(&cfg);
-
-	if (!config_read_file(&cfg, path)) {
-		_config_err(&cfg);
-		return NULL;
-	}
-
-	root = config_lookup(&cfg, "cache");
-
-	if (!root) {
-		_config_err(&cfg);
-		return NULL;
-	}
-
-	games = config_setting_lookup(root, "games");
-
-	if (!games) {
-		_config_err(&cfg);
-		return NULL;
-	}
-
-	elem = config_setting_get_elem(games, n);
-
-	if (!elem) {
-		_config_err(&cfg);
-		return NULL;
-	}
-
-	if (! (config_setting_lookup_string(elem, "location", &location) &&
-			config_setting_lookup_string(elem, "name", &name) &&
-			config_setting_lookup_string(elem, "SP", &sp) &&
-			config_setting_lookup_int(elem, "ID", &id))) {
-		return NULL;
-	}
+	/* const char *location, *name, *sp; */
+	/* int id; */
 
 	Game_rec *grp;
 	grp = (Game_rec *)ecalloc(1, sizeof *grp + 1);
@@ -214,165 +103,99 @@ cache_get_record(const char *path, int n)
 		return NULL;
 	}
 
-	grp->id = id;
-	grp->location = estrdup(location);
-	grp->name = estrdup(name);
-	grp->start_point = estrdup(sp);
-
-	config_destroy(&cfg);
+	/* grp->id = id; */
+	/* grp->location = estrdup(location); */
+	/* grp->name = estrdup(name); */
+	/* grp->start_point = estrdup(sp); */
 
 	return grp;
 }
 
-//Get number of elements
-//cache->games group in file "path".
+/* Get number of Games Table rows */
 int
-cache_get_length(const char *path)
+cache_get_length(sqlite3 *db)
 {
-	int c;
-
-	config_t cfg;
-	config_setting_t *root, *games;
-
-	config_init(&cfg);
-
-	if (!config_read_file(&cfg, path)) {
-		_config_err(&cfg);
-		config_destroy(&cfg);
-		return -1;
-	}
-
-	root = config_lookup(&cfg, "cache");
-
-	if (!root) {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	games = config_setting_lookup(root, "games");
-
-	c = 0;
-	if (games) {
-		c = config_setting_length(games);
-	} else {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	config_destroy(&cfg);
-
-	return c;
+	return sqlite3_last_insert_rowid(db);
 }
 
 int
-cache_put_record(const char *path, struct Game_rec *GE)
+db_put_rec(sqlite3 *db, struct Game_rec *GE)
 {
 	if (!GE) {
 		warn("GR is not exist!");
 		return -1;
 	}
 
-	config_t cfg;
-	config_setting_t *root, *games, *group, *entry;
+	char *err_msg = 0;
+	int rc;
+	int len = PATH_MAX*2 +
+			FILENAME_MAX +
+			UINT_MAX_DIG*2 +
+			91;
+	char sql_req[len];
 
-	config_init(&cfg);
+	esnprintf(sql_req, len,
+		"INSERT INTO \
+		Games(\
+		id, \
+		play_time, \
+		name, \
+		icon, \
+		gener, \
+		location, \
+		start_point, \
+		start_argv, \
+		uninstaller) \
+		VALUES(%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s')", 
+		GE->id,
+		GE->play_time,
+		GE->name,
+		GE->icon ? GE->icon : "",
+		GE->gener ? GE->gener : "",
+		GE->location,
+		GE->start_point,
+		GE->start_argv ? GE->start_argv : "",
+		GE->uninstaller ? GE->uninstaller : "");
 
-	if (!config_read_file(&cfg, path)) {
-		_config_err(&cfg);
+	rc = sqlite3_exec(db, sql_req, 0, 0, &err_msg);
+
+	if (rc != SQLITE_OK) {
+		warn("SQL error: %s", err_msg);
+		sqlite3_free(err_msg);
 		return -1;
 	}
 
-	root = config_lookup(&cfg, "cache");
-
-	if (!root) {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	games = config_setting_lookup(root, "games");
-
-	if (!games) {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	config_set_option(&cfg, _config_write_options, 0);
-	config_set_tab_width(&cfg, 4);
-
-	group = config_setting_add(games, NULL, CONFIG_TYPE_GROUP);
-
-	if (!group) {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	if ((entry = config_setting_add(group, "ID", CONFIG_TYPE_INT)))
-		config_setting_set_int(entry, GE->id);
-
-	if ((entry = config_setting_add(group, "name", CONFIG_TYPE_STRING)))
-		config_setting_set_string(entry, GE->name);
-
-	if ((entry = config_setting_add(group, "location", CONFIG_TYPE_STRING)))
-		config_setting_set_string(entry, GE->location);
-
-	if ((entry = config_setting_add(group, "SP", CONFIG_TYPE_STRING)))
-		config_setting_set_string(entry, GE->start_point);
-
-	config_write_file(&cfg, path);
-
-	config_destroy(&cfg);
-	
 	return 0;
 }
 
-//Delete game record number "n"
-//in file "path".
+/* Delete game record with pushed id */
+/* in file "path". */
 int
-cache_delete_record(const char *path, int n)
+cache_delete_record(sqlite3 *db, int id)
 {
-	config_t cfg;
-	config_setting_t *root, *games;
+	char *err_msg = 0;
+	int len = 29 + UINT_MAX_DIG;
+	char sql_req[10];
+
+	esnprintf(sql_req, len, "DELETE FROM Games WHERE id = %d", id);
+
+	int rc = sqlite3_exec(db, sql_req, 0, 0, &err_msg);
 	
-	config_init(&cfg);
-
-	if (!config_read_file(&cfg, path)) {
-		_config_err(&cfg);
-		config_destroy(&cfg);
+	if (rc != SQLITE_OK) {
+		warn("SQL error: %s", err_msg);
+		sqlite3_free(err_msg);
 		return -1;
 	}
 
-	root = config_lookup(&cfg, "cache");
-
-	if (!root) {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	games = config_setting_lookup(root, "games");
-
-	if (!games) {
-		_config_err(&cfg);
-		return -1;
-	}
-
-	config_set_option(&cfg, _config_write_options, 0);
-	config_set_tab_width(&cfg, 4);
-
-	config_setting_remove_elem(games, n);
-
-	config_write_file(&cfg, path);
-
-	config_destroy(&cfg);
-
-	return 0;
+	return rc;
 }
 
+/* TODO */
 static int
-config_read_exeptions(const char *confPath)
+db_read_exeptions(sqlite3 *db)
 {
-	int i, c, len, ind;
-	config_t cfg;
-	config_setting_t *setting, *setting_names;
+	/* int i, len, ind; */
+	int ind;
 
 	exceptionName = (char **)ecalloc(MAX_EXCEPTIONS+1, sizeof(char));
 	if (!exceptionName) {
@@ -386,138 +209,119 @@ config_read_exeptions(const char *confPath)
 	exceptionName[ind] = (char *)ecalloc(13, sizeof(char));
 	strcpy(exceptionName[ind++], "^[.]wine\\w*");
 
-	config_init(&cfg);
+	/* if (exceptionName[ind]) { */
+	/* 	memcpy(exceptionName[ind++], exc, len); */
 
-	if (!config_read_file(&cfg, confPath)) {
-		warn("Cant read config file: %s", confPath);
-		config_destroy(&cfg);
-		return -1;
-	}
-
-	setting = config_lookup(&cfg, "exceptions");
-
-	if (setting)
-	{
-		setting_names = config_setting_lookup(setting, "name");
-
-		if (config_setting_type(setting_names) != CONFIG_TYPE_LIST) {
-			warn("config file format error");
-			config_destroy(&cfg);
-			return -1;
-		}
-
-		c = config_setting_length(setting_names);
-
-		for (i = 0; i < c; i++) {
-			const char *exc = config_setting_get_string_elem(setting_names, i);
-			len = strlen(exc) + 1;
-			exceptionName[ind] = (char *)emalloc(len);
-			if (exceptionName[ind]) {
-				memcpy(exceptionName[ind++], exc, len);
-			}
-		}
-	}
-
-	config_destroy(&cfg);
-
-	pp_delete_dup(exceptionName, ind);
+	/* pp_delete_dup(exceptionName, ind); */
 
 	return ind;
 }
 
 int
-readConfig(void)
+db_read_settings(void)
 {
-	char *cfgPath;
+	printf("Reading settings...\n"); fflush(stdout);
 
-	printf("Reading config file...\n"); fflush(stdout);
-
-	if (!(cfgPath = findConfigFile())) {
-		warn("No config file!");
+	sqlite3 *db;
+	if (!(db=db_init())) {
+		warn("Cant write cache.");
 		return -1;
 	}
 
-	if (config_read_exeptions(cfgPath) == -1) {
-		warn("Cant read exceptions!");
-	}
+	db_read_exeptions(db);
 
-	free(cfgPath);
+	sqlite3_close(db);
 
 	return 1;
 }
 
 int
-readCache()
+sql_gr_init(void *NotUsed, int argc, char **argv, char **azColName)
 {
-	int n, c_rec;
-	char *cchPath;
-	Game_rec *GR;
+	Game_rec *grp;
+	char *nm, *val;
+	int i;
 
-	printf("Reading cache...\n"); fflush(stdout);
+	NotUsed = 0;
 
-	if (!(cchPath=initCacheFile())) {
-		warn("Cant read cache!");
+	grp = (Game_rec *)ecalloc(1, sizeof*grp);
+
+	/* TODO */
+	for (i = 0; i < argc; i++) {
+		nm  = azColName[i];
+		val = argv[i];
+
+		if (!strcmp(nm, "id")) {
+			grp->id = atoi(val);
+		} else if (!strcmp(nm, "play_time")) {
+			grp->play_time = atoi(val);
+		} else if (!strcmp(nm, "name")) {
+			grp->name = val ? estrdup(val) : NULL;
+		} else if (!strcmp(nm, "ganer")) {
+			grp->gener = val ? estrdup(val) : NULL;
+		} else if (!strcmp(nm, "location")) {
+			grp->location = val ? estrdup(val) : NULL;
+		} else if (!strcmp(nm, "start_point")) {
+			grp->start_point = val ? estrdup(val) : NULL;
+		} else if (!strcmp(nm, "start_argv")) {
+			grp->start_argv = val ? estrdup(val) : NULL;
+		} else if (!strcmp(nm, "uninstaller")) {
+			grp->uninstaller = val ? estrdup(val) : NULL;
+		}
+	}
+
+	gr_add(grp);
+	free(grp);
+
+	return 0;
+}
+
+int
+db_read_cached_recs()
+{
+	printf("Reading game records...\n");
+
+	sqlite3 *db;
+	if (!(db=db_init())) {
+		warn("Cant write cache.");
 		return -1;
 	}
 
-	cache_trim(cchPath);
+	char *err_msg;
+	char *sql_req = "SELECT * FROM Games;";
 
-	c_rec = cache_get_length(cchPath);
-	for (n = 0; n < c_rec; n++)
-	{
-		GR = cache_get_record(cchPath, n);
+	int rc =sqlite3_exec(db, sql_req, sql_gr_init, 0, &err_msg);
 
-		if (!GR) {
-			continue;
-		} else if (gr_is_dup(*GR)) {
-			grp_free(GR);
-			continue;
-		}
-
-		if (gr_is_broken(GR) == 0) {
-			gr_add(*GR);
-		} else {
-			cache_delete_record(cchPath, n);
-			grp_free(GR);
-
-			if (!n) n--;
-			c_rec--;
-
-			//skiping free(GR)
-			continue;
-		}
-
-		free(GR);
+	if (rc != SQLITE_OK) {
+		warn("SQL error: %s", err_msg);
+		sqlite3_free(err_msg);
+		return -1;
 	}
+
+	sqlite3_close(db);
 	
-	free(cchPath);
-
-	return 1;
+	return 0;
 }
 
 int
-writeCache(void)
+db_cache_recs(void)
 {
 	int i;
-	char *cchPath;
+	sqlite3 *db;
 
-	printf("Writing cache...\n"); fflush(stdout);
+	printf("Writing game records...\n"); fflush(stdout);
 
-	if (!(cchPath=initCacheFile())) {
+	if (!(db=db_init())) {
 		warn("Cant write cache.");
 		return -1;
 	}
 
 	for (i = 0; i < gr_tab.ngames; i++)
 	{
-		if (isCached(cchPath, gr_tab.game_rec[i])) {
-			continue;
-		}
-
-		cache_put_record(cchPath, &gr_tab.game_rec[i++]);
+		db_put_rec(db, &gr_tab.game_rec[i++]);
 	}
 
-	free(cchPath);
+	sqlite3_close(db);
 
 	return i;
 }

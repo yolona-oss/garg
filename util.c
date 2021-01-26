@@ -29,16 +29,26 @@ cat_fnames(const char *f, const char *s)
 }
 
 void
-pp_free(char **pa, int n)
+pp_nfree(char **pp, int n)
 {
 	while (n--) {
-		free(pa[n]);
+		free(pp[n]);
 	}
-	free(pa);
+	free(pp);
+}
+
+void
+pp_free(char **pp)
+{
+	int n = pp_get_len(pp);
+	while (n--) {
+		free(pp[n]);
+	}
+	free(pp);
 }
 
 int
-pp_delete_dup(char **pa, int n)
+pp_delete_dup(char **pp, int n)
 { 
     if (n == 0 || n == 1)
         return n;
@@ -49,24 +59,24 @@ pp_delete_dup(char **pa, int n)
 	int k = 0;
 	int i, j;
 	for (i = 0; i < n; i++) {
-	   if ( pa[i] == NULL ) {
+	   if ( pp[i] == NULL ) {
 			continue;
 		}
-		current = pa[i];
+		current = pp[i];
 		uniq[k] = current;
 		k++;
 		for (j = i+1; j < n; j++) {
-			if (current == pa[j]) {
-				pa[j] = NULL;
+			if (current == pp[j]) {
+				pp[j] = NULL;
 			}
 		}
 	}
 
 	for (j = i = 0; i < n; i++) {
 		if (i > k-1) {
-			pa[i] = NULL;
+			pp[i] = NULL;
 		} else {
-			pa[i] = uniq[j++];
+			pp[i] = uniq[j++];
 		}
 	}
  
@@ -142,6 +152,10 @@ isExcludeName(const char *path)
 
 	name = basename((char*)path);
 
+	if (!exceptionName || !exceptionName[0]) {
+		return 0;
+	}
+
 	for (int i = 0; exceptionName[i]; i++) {
 		status = regcomp(&regex, exceptionName[i], REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
 
@@ -165,13 +179,12 @@ isExcludeName(const char *path)
 }
 
 int
-isStartPoint(const char *filePath, const char *gameName)
+isStartPoint(const char *file_path, const char *gameName)
 {
-	int i;
-	char *fileName;
+	char *file_name;
 	char sh[FILENAME_MAX], x86_64[FILENAME_MAX], x64[FILENAME_MAX], x86[FILENAME_MAX];
 
-	fileName = basename((char*)filePath);
+	file_name = basename((char*)file_path);
 
 	esnprintf(sh, sizeof(sh), "%s.sh", gameName);
 	esnprintf(x86_64, sizeof(x86_64), "%s.x86_64", gameName);
@@ -185,13 +198,41 @@ isStartPoint(const char *filePath, const char *gameName)
 		(char *)gameName, sh, x86_64, x64, x86,
 		"launcher", "launcher.sh", "launcher.x64", "launcher.x86_64", "launcher.x86" };
 
-	if (isExecuteble(filePath)) {
+	if (isExecuteble(file_path)) {
+		int i;
 		for (i = 0; i < 21; i++) {
-			if (strcasecmp(fileName, spPattern[i]) == 0) {
+			if (strcasecmp(file_name, spPattern[i]) == 0) {
 				return 1;
 			}
 		}
 	}
+
+	return 0;
+}
+
+int
+isUninstaller(const char *file_path, const char *null)
+{
+	char *name;
+	regex_t regex;
+	name = basename((char *)file_path);
+
+	int rc = regcomp(&regex, "uninsta", REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
+
+	if (rc) {
+		warn("regcomp:");
+		regfree(&regex);
+		return -1;
+	}
+
+	rc = regexec(&regex, name, 0, NULL, 0);
+	
+	if (!rc) {
+		regfree(&regex);
+		return 1;
+	}
+
+	regfree(&regex);
 
 	return 0;
 }

@@ -1,15 +1,19 @@
 CC = ccache gcc
 
+
+LIB_SQLITE  = $(shell pkg-config --libs sqlite3)
+LIB_LINCONF = $(shell pkg-config --libs libconfig)
+
 INC     =
 LDFLAGS =
-LDLIBS  = $(shell pkg-config --libs libconfig)
+LDLIBS  = $(LIB_SQLITE) $(LIB_LINCONF)
 
 CFLAGS  = -g -c -Wall -xc -O0 $(INC)
 CFLAGS +=
 
 SOURCES    = main.c util.c eprintf.c gamerec.c scan.c ccread.c
 OBJECTS    = $(SOURCES:.c=.o)
-EXECUTABLE = $(shell basename `pwd`)
+EXECUTABLE = garg
 
 all: options $(SOURCES) $(EXECUTABLE)
 
