@@ -8,10 +8,10 @@ INC     =
 LDFLAGS =
 LDLIBS  = $(LIB_SQLITE) $(LIB_LINCONF)
 
-CFLAGS  = -g -c -Wall -xc -O0 $(INC)
+CFLAGS  = -g -c -Wall -xc -O2 $(INC)
 CFLAGS +=
 
-SOURCES    = main.c util.c eprintf.c gamerec.c scan.c ccread.c
+SOURCES    = main.c util.c eprintf.c gamerec.c scan.c list.c dbman.c search_cache.c games_cache.c
 OBJECTS    = $(SOURCES:.c=.o)
 EXECUTABLE = garg
 

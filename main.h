@@ -1,17 +1,20 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include "list.h"
+
 /* vars */
 extern char *argv0;
 extern int g_qflag, g_dflag;
 
 extern char *g_user_db;
 
-extern char **exceptionName;
-extern char **exceptionPath;
-extern char **inclusions;
-
 extern struct Gr_tab gr_tab;
+
+extern node_t *g_exceptions;
+extern node_t *g_exceptions_head;
+extern node_t *g_inclusions;
+extern node_t *g_inclusions_head;
 
 /* functions */
 int scan(const char *path);

@@ -9,9 +9,11 @@
 #include <string.h>
 #include <dirent.h>
 
+#include "scan.h"
 #include "eprintf.h"
 #include "util.h"
-#include "ccread.h"
+#include "games_cache.h"
+#include "search_cache.h"
 #include "gamerec.h"
 
 /* funcs */
@@ -115,7 +117,7 @@ find_games(const char *path)
 {
 	int i;
 	char *sp = NULL, *uninst = NULL, *game_name;
-	Game_rec *gr;
+	game_t *gr;
 
 	printf("Finding games...\n");
 
@@ -168,11 +170,18 @@ void
 check_gr_tab(struct Gr_tab tab)
 {
 	int i;
-	struct Gr_prop prop;
+	game_prop_t prop;
 	for (i = 0; i < tab.ngames; i++) {
 		gr_get_props(&tab.game_rec[i], prop);
 		gr_set_props(&tab.game_rec[i], &prop);
 	}
+}
+
+int
+scan_update()
+{
+
+	return 0;
 }
 
 int

@@ -9,19 +9,26 @@
 #include "util.h"
 #include "eprintf.h"
 #include "gamerec.h"
+#include "list.h"
 
 /* vars */
 char *g_user_db;
 
-char **exceptionName;
-char **exceptionPath;
-char **inclusions;
+node_t *g_exceptions;
+node_t *g_exceptions_head;
+node_t *g_inclusions;
+node_t *g_inclusions_head;
+
+static void cleanup();
+static void terminate();
+static void usage();
 
 static void
 cleanup()
 {
 	if (g_user_db) free(g_user_db);
-	pp_free(exceptionName);
+	list_freeall(g_exceptions_head);
+	list_freeall(g_inclusions_head);
 	grt_free(gr_tab);
 }
 
@@ -33,10 +40,10 @@ terminate()
 }
 
 static void
-usage(void)
+usage()
 {
 	/* TODO */
-	die("-c <PATH> -[qd] -s <PATH>");
+	die("--db=<PATH> -[qd] -s <PATH>");
 }
 
 int
@@ -58,7 +65,7 @@ main(int argc, char **argv)
 	char path[PATH_MAX] = "";
 
 	struct option long_options[] = {
-		{ "config", required_argument, NULL, 'c' },
+		{ "db",     required_argument, NULL, 'c' },
 		{ "quiet",  no_argument,       NULL, 'q' },
 		{ "debug",  no_argument,       NULL, 'd' },
 		{ "help",   no_argument,       NULL, 'h' },
@@ -93,7 +100,6 @@ main(int argc, char **argv)
 
 	/* ncurece interface */
 
-	/* add multi path option */
 	scan(path[0] ? path : "./");
 
 	printf("##########[!END!]############");

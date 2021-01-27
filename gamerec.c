@@ -10,7 +10,7 @@
 extern struct Gr_tab gr_tab;
 
 void
-grp_free(Game_rec *grp)
+grp_free(game_t *grp)
 {
 	grp->id = -1707;
 	grp->play_time = -1;
@@ -32,7 +32,7 @@ grp_free(Game_rec *grp)
 }
 
 void
-grp_check_free(Game_rec *grp)
+grp_check_free(game_t *grp)
 {
 	if (grp) {
 		if (grp->location)
@@ -74,7 +74,7 @@ grt_free(struct Gr_tab grt)
 }
 
 void
-gr_print(Game_rec *Game)
+gr_print(game_t *Game)
 {
 	if (Game) {
 		printf("\n##########################################\n");
@@ -96,7 +96,7 @@ gr_print(Game_rec *Game)
 }
 
 int
-gr_get_props(Game_rec *grp, struct Gr_prop prop)
+gr_get_props(game_t *grp, game_prop_t prop)
 {
 	if (!grp) {
 		return -1;
@@ -130,7 +130,7 @@ gr_get_props(Game_rec *grp, struct Gr_prop prop)
 }
 
 void
-gr_set_props(Game_rec *grp, struct Gr_prop *prop)
+gr_set_props(game_t *grp, game_prop_t *prop)
 {
 	grp->properties.icon = prop->icon;
 	grp->properties.location = prop->location;
@@ -152,14 +152,14 @@ gr_make_id(const char *str)
 	return ret % UINT_MAX;
 }
 
-Game_rec *
+game_t *
 gr_init(const char *name, const char *location, const char *sp, const char *uninst)
 {
 	if (!name || !location || !sp) {
 		return NULL;
 	}
 
-	Game_rec *grp = (Game_rec *)ecalloc(1, sizeof*grp);
+	game_t *grp = (game_t *)ecalloc(1, sizeof*grp);
 
 	grp->id        = gr_make_id(name);
 	grp->play_time = 0;
@@ -170,6 +170,8 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 
 	if (uninst) {
 		grp->uninstaller = estrdup(uninst);
+	} else {
+		grp->uninstaller = NULL;
 	}
 
 	if (!grp->location
@@ -184,27 +186,27 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 }
 
 void
-gr_edit(Game_rec *grp, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller)
+gr_edit(game_t *grp, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller)
 {
 
 }
 
 int
-gr_add(Game_rec *newrec)
+gr_add(game_t *newrec)
 {
-	Game_rec *grp;
+	game_t *grp;
 
 	if(gr_tab.game_rec == NULL) {
 		gr_tab.game_rec =
-			(Game_rec *)emalloc(GR_INIT * sizeof(Game_rec));
+			(game_t *)emalloc(GR_INIT * sizeof(game_t));
 		if (gr_tab.game_rec == NULL) {
 			return -1;
 		}
 		gr_tab.max = GR_INIT;
 		gr_tab.ngames = 0;
 	} else if (gr_tab.ngames >= gr_tab.max) {
-		grp = (Game_rec *)erealloc(gr_tab.game_rec,
-				(GR_GROW*gr_tab.max) * sizeof(Game_rec));
+		grp = (game_t *)erealloc(gr_tab.game_rec,
+				(GR_GROW*gr_tab.max) * sizeof(game_t));
 		if (grp == NULL) {
 			return -1;
 		}
@@ -226,7 +228,7 @@ gr_delete(int id)
 	for (i = 0; i < gr_tab.ngames; i++) {
 		if (gr_tab.game_rec[i].id == id) {
 			memmove(gr_tab.game_rec+i, gr_tab.game_rec+i+1,
-					(gr_tab.ngames-(i+1)) * sizeof(Game_rec));
+					(gr_tab.ngames-(i+1)) * sizeof(game_t));
 			gr_tab.ngames--;
 			return 1;
 		}
@@ -236,7 +238,7 @@ gr_delete(int id)
 }
 
 int
-gr_is_dup(Game_rec game)
+gr_is_dup(game_t game)
 {
 	int i;
 
@@ -250,7 +252,7 @@ gr_is_dup(Game_rec game)
 }
 
 int
-grcmp(Game_rec src, Game_rec dst)
+grcmp(game_t src, game_t dst)
 {
 	if (!(src.location || dst.location ||
 		src.name || dst.name ||
@@ -267,8 +269,9 @@ grcmp(Game_rec src, Game_rec dst)
 	return 1;
 }
 
-Game_rec *
-grcpy(Game_rec *dst, Game_rec *src)
+/* TODO */
+game_t *
+grcpy(game_t *dst, game_t *src)
 {
 	dst->id = src->id;
 	dst->play_time = src->play_time;
@@ -285,12 +288,13 @@ grcpy(Game_rec *dst, Game_rec *src)
 	return dst;
 }
 
-Game_rec *
-grdup(Game_rec *gr)
+/* TODO */
+game_t *
+grdup(game_t *gr)
 {
-	Game_rec *dup;
+	game_t *dup;
 
-	dup = (Game_rec *)ecalloc(1, sizeof *dup + 1);
+	dup = (game_t *)ecalloc(1, sizeof *dup + 1);
 	if (!dup) {
 		return NULL;
 	}

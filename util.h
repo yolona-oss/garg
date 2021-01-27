@@ -6,10 +6,13 @@
 #define INT_MAX_DIG      (int)round(log10(INT_MAX + 0.5))
 #define UINT_MAX_DIG     (int)round(log10(UINT_MAX + 0.5))
 
+#include "list.h"
+
 //vars
 extern char *argv0;
 extern int g_qflag, g_dflag;
-extern char **exceptionName;
+extern node_t *g_exceptions;
+extern node_t *g_inclusions;
 
 //func
 char *cat_fnames(const char *f, const char *s);

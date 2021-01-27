@@ -2,7 +2,9 @@
 #define _GAMEREC_H_
 
 /* structs */
-typedef struct Game_rec Game_rec;
+typedef struct Game_rec game_t;
+typedef struct Gr_tab game_tab_t;
+typedef struct Gr_prop game_prop_t;
 
 struct Gr_prop {
 	unsigned location: 1;    /* 0 - normal, 1 - incorrect path */
@@ -27,30 +29,30 @@ struct Game_rec {
 struct Gr_tab {
 	int ngames;         /* using cells */
 	int max;            /* allocated cells */
-	Game_rec *game_rec;
+	struct Game_rec *game_rec;
 };
 
 /* consts */
 enum { GR_INIT = 1, GR_GROW = 2 };
 
 /* funcs */
-void grp_free(struct Game_rec *Game);
+void grp_free(game_t *Game);
 void grt_free(struct Gr_tab Game);
 
-void gr_print(Game_rec *Game);
+void gr_print(game_t *Game);
 
-int  gr_get_props(Game_rec *grp, struct Gr_prop prop);
-void gr_set_props(Game_rec *grp, struct Gr_prop *prop);
+int  gr_get_props(game_t *grp, game_prop_t prop);
+void gr_set_props(game_t *grp, game_prop_t *prop);
 
-Game_rec *gr_init(const char *name, const char *location, const char *sp, const char *unistaller);
-void gr_edit(Game_rec *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
+game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller);
+void gr_edit(game_t *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
 
-int gr_add(Game_rec *newrec);
+int gr_add(game_t *newrec);
 int gr_delete(int id);
-int gr_is_dup(Game_rec rec);
+int gr_is_dup(game_t rec);
 
-int grcmp(Game_rec src, Game_rec dst);
-Game_rec *grcpy(Game_rec *dst, Game_rec *src);
-Game_rec *grdup(Game_rec *rec);
+int grcmp(game_t src, game_t dst);
+game_t *grcpy(game_t *dst, game_t *src);
+game_t *grdup(game_t *rec);
 
 #endif

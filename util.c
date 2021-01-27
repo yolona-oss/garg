@@ -8,6 +8,10 @@
 
 #include "eprintf.h"
 #include "util.h"
+#include "list.h"
+
+extern node_t *g_exceptions;
+extern node_t *g_inclusions;
 
 char *
 cat_fnames(const char *f, const char *s)
@@ -152,13 +156,13 @@ isExcludeName(const char *path)
 
 	name = basename((char*)path);
 
-	if (!exceptionName || !exceptionName[0]) {
+	if (!g_exceptions) {
 		return 0;
 	}
 
-	for (int i = 0; exceptionName[i]; i++) {
-		status = regcomp(&regex, exceptionName[i], REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
-
+	for ( ; g_exceptions; g_exceptions=g_exceptions->next) {
+		status = regcomp(&regex, g_exceptions->value,
+					REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
 		if (status) {
 			warn("regcomp:");
 			regfree(&regex);
@@ -166,7 +170,6 @@ isExcludeName(const char *path)
 		}
 
 		status = regexec(&regex, name, 0, NULL, 0);
-		
 		if (!status) {
 			regfree(&regex);
 			return 1;
