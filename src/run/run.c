@@ -2,11 +2,11 @@
 #include <errno.h>
 #include <time.h>
 
-#include "main.h"
-#include "games/gamerec.h"
-#include "scan/scan.h"
-#include "db/dbman.h"
-#include "utils/eprintf.h"
+#include "../main.h"
+#include "../games/gamerec.h"
+#include "../scan/scan.h"
+#include "../db/dbman.h"
+#include "../utils/eprintf.h"
 
 #define M_SEC(n) 1000*n
 

@@ -6,7 +6,7 @@
 #include <getopt.h>
 
 #include "main.h"
-#include "run.h"
+#include "run/run.h"
 #include "utils/util.h"
 #include "utils/eprintf.h"
 #include "utils/list.h"
