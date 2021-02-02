@@ -1,7 +1,7 @@
 #ifndef _SCAN_H_
 #define _SCAN_H_
 
-#include "gamerec.h"
+#include "../games/gamerec.h"
 
 #define C_SPEC 1
 

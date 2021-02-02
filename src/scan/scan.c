@@ -9,12 +9,12 @@
 #include <string.h>
 #include <dirent.h>
 
-#include "main.h"
+#include "../main.h"
 #include "scan.h"
-#include "eprintf.h"
-#include "util.h"
-#include "gamerec.h"
-#include "dbman.h"
+#include "../utils/eprintf.h"
+#include "../utils/util.h"
+#include "../games/gamerec.h"
+#include "../db/dbman.h"
 
 /* funcs */
 /* static int special_id(const char *name); */

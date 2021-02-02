@@ -3,9 +3,9 @@
 #include <sqlite3.h>
 #include <limits.h>
 
-#include "main.h"
-#include "util.h"
-#include "eprintf.h"
+#include "../main.h"
+#include "../utils/util.h"
+#include "../utils/eprintf.h"
 
 sqlite3 *
 db_init(void)

@@ -3,11 +3,10 @@
 #include <time.h>
 
 #include "main.h"
-#include "gamerec.h"
-#include "scan.h"
-#include "search_cache.h"
-#include "games_cache.h"
-#include "eprintf.h"
+#include "games/gamerec.h"
+#include "scan/scan.h"
+#include "db/dbman.h"
+#include "utils/eprintf.h"
 
 #define M_SEC(n) 1000*n
 

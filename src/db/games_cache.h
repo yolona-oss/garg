@@ -4,7 +4,7 @@
 #define MAX_EXCEPTIONS  1000
 #define MAX_INCLUSIONS  MAX_EXCEPTIONS
 
-#include "gamerec.h"
+#include "../games/gamerec.h"
 #include <sqlite3.h>
 #include <limits.h>
 

@@ -3,8 +3,8 @@
 #include <string.h>
 #include <limits.h>
 
-#include "util.h"
-#include "eprintf.h"
+#include "../utils/util.h"
+#include "../utils/eprintf.h"
 #include "gamerec.h"
 
 /* vars */

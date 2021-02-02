@@ -6,11 +6,11 @@
 #include <getopt.h>
 
 #include "main.h"
-#include "util.h"
-#include "eprintf.h"
-#include "gamerec.h"
-#include "list.h"
 #include "run.h"
+#include "utils/util.h"
+#include "utils/eprintf.h"
+#include "utils/list.h"
+#include "games/gamerec.h"
 
 /* vars */
 int done = 0;

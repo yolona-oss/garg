@@ -8,11 +8,11 @@
 #include <sqlite3.h>
 #include <math.h>
 
-#include "main.h"
+#include "../main.h"
 #include "dbman.h"
 #include "games_cache.h"
-#include "util.h"
-#include "eprintf.h"
+#include "../utils/util.h"
+#include "../utils/eprintf.h"
 
 /* vars */
 game_tab_t gr_tab;

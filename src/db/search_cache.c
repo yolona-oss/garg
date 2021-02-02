@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "list.h"
-#include "eprintf.h"
+#include "../utils/list.h"
+#include "../utils/eprintf.h"
 #include "dbman.h"
 #include "search_cache.h"
 

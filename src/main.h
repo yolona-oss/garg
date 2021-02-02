@@ -1,8 +1,8 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#include "list.h"
-#include "gamerec.h"
+#include "utils/list.h"
+#include "games/gamerec.h"
 #include <limits.h>
 
 /* vars */

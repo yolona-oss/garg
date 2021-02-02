@@ -1,7 +1,7 @@
 #ifndef _SEARCH_CACHE_H_
 #define _SEARCH_CACHE_H_
 
-#include "list.h"
+#include "../utils/list.h"
 
 extern node_t *g_exceptions;
 extern node_t *g_exceptions_head;

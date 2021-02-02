@@ -10,13 +10,13 @@ LDLIBS  = $(LIB_SQLITE)
 CFLAGS  = -g -c -Wall -xc -O2 $(INC)
 CFLAGS +=
 
-SOURCES    = main.c \
-			 run.c \
-			 scan.c \
-			 gamerec.c \
-			 util.c eprintf.c \
-			 list.c \
-			 dbman.c search_cache.c games_cache.c
+SOURCES    = src/main.c \
+			 src/run.c \
+			 src/scan/scan.c \
+			 src/games/gamerec.c \
+			 src/utils/util.c src/utils/eprintf.c \
+			 src/utils/list.c \
+			 src/db/dbman.c src/db/search_cache.c src/db/games_cache.c
 OBJECTS    = $(SOURCES:.c=.o)
 EXECUTABLE = garg
 
