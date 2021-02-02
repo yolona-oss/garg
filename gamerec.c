@@ -7,7 +7,8 @@
 #include "eprintf.h"
 #include "gamerec.h"
 
-extern struct Gr_tab gr_tab;
+/* vars */
+extern game_tab_t gr_tab;
 
 void
 grp_free(game_t *grp)
@@ -54,7 +55,7 @@ grp_check_free(game_t *grp)
 }
 
 void
-grt_free(struct Gr_tab grt)
+grt_free(game_tab_t grt)
 {
 	for (int i = 0; i < gr_tab.ngames; i++) {
 		free(gr_tab.game_rec[i].name);
@@ -136,6 +137,16 @@ gr_set_props(game_t *grp, game_prop_t *prop)
 	grp->properties.location = prop->location;
 	grp->properties.start_point = prop->start_point;
 	grp->properties.uninstaller = prop->uninstaller;
+}
+
+void
+check_gr_tab(game_tab_t tab)
+{
+	game_prop_t prop;
+	for (int i = 0; i < tab.ngames; i++) {
+		gr_get_props(&tab.game_rec[i], prop);
+		gr_set_props(&tab.game_rec[i], &prop);
+	}
 }
 
 unsigned int

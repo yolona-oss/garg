@@ -9,21 +9,28 @@
 #include <string.h>
 #include <dirent.h>
 
+#include "main.h"
 #include "scan.h"
 #include "eprintf.h"
 #include "util.h"
-#include "games_cache.h"
-#include "search_cache.h"
 #include "gamerec.h"
+#include "dbman.h"
 
 /* funcs */
+/* static int special_id(const char *name); */
+
 static char **get_file_list(const char *path);
-static char *scan_for(const char *location, const char *gameName, int func(const char *, const char *));
-static int scan_inclusions(const char *location);
+static char *scan_for(const char *location, const char *game_name, int maxdepth, 
+		int func(const char *, const char *));
 static int find_games(const char *path);
 
 /* vars */
 extern struct Gr_tab gr_tab;
+extern int g_scan_depth;
+
+/* const spec_name_t special_names[C_SPEC] = { */ 
+/* 	{ "Steam", scan_steam }, */
+/* }; */
 
 static char **
 get_file_list(const char *path)
@@ -68,10 +75,29 @@ get_file_list(const char *path)
 	return ret;
 }
 
-/* TODO add subdir search */
+/* /1* returns id of specials name *1/ */
+/* /1* or -1 if its not special *1/ */
+/* static int */ 
+/* special_id(const char *name) */
+/* { */
+/* 	int i; */
+/* 	for (i = 0; special_names[i].val; i++) { */
+/* 		if (strcmp(special_names[i].val, name) == 0) { */
+/* 			return i; */
+/* 		} */
+/* 	} */
+
+/* 	return -1; */
+/* } */
+
 static char *
-scan_for(const char *location, const char *gameName, int check(const char *, const char *))
+scan_for(const char *location, const char *game_name, int maxdepth,
+		int check(const char *, const char *))
 {
+	if (!maxdepth) {
+		return 0;
+	}
+
 	int i, stat, len;
 	char *ret = NULL;
 	char **list = NULL;
@@ -82,11 +108,10 @@ scan_for(const char *location, const char *gameName, int check(const char *, con
 	{
 		if (!isExcludeName(list[i]))
 		{
+			len = strlen(list[i]) + 1;
 			if ((stat = isDirectory(list[i]))) {
-				;
 			} else if (stat == 0) {
-				if (check(list[i], gameName)) {
-					len = strlen(list[i]) + 1;
+				if (check(list[i], game_name)) {
 					ret = (char *)emalloc(len);
 					if (ret) {
 						memcpy(ret, list[i], len);
@@ -97,13 +122,25 @@ scan_for(const char *location, const char *gameName, int check(const char *, con
 		}
 	}
 
+	if (!ret && maxdepth > 0) {
+		
+		if (!ret) {
+			char **dirl = pp_sort(list, isDirectory);
+			if (dirl) {
+				for (i = 0; dirl[i]; i++) {
+					scan_for(dirl[i], game_name, --maxdepth, check);
+				}
+				free(dirl);
+			}
+		}
+	}
+
 	pp_free(list);
 
 	return ret;
 }
 
-/* TODO */
-static int
+int
 scan_inclusions(const char *location)
 {
 
@@ -111,13 +148,17 @@ scan_inclusions(const char *location)
 }
 
 /* Finding games in all directories in "path"
- * with depth 1 */
+ * with depth 1.
+ * Detecting special file names and redirecting 
+ * search algorithm to another. */
 static int
 find_games(const char *path)
 {
 	int i;
 	char *sp = NULL, *uninst = NULL, *game_name;
 	game_t *gr;
+
+	/* char *(*scanner)(const char *, const char *, int, int func(const char *, const char *)) = NULL; */
 
 	printf("Finding games...\n");
 
@@ -126,7 +167,6 @@ find_games(const char *path)
 		return -1;
 	}
 
-	/* TODO make run with depth 3 */
 	for (i = 0; list[i]; i++) {
 		if (!isDirectory(list[i])
 			|| isExcludeName(list[i])) {
@@ -138,11 +178,21 @@ find_games(const char *path)
 			warn("basename:");
 			continue;
 		}
-		sp = scan_for(list[i], game_name, isStartPoint);
+
+		/* Scanning Steam dir */
+		/* TODO make its run as function */
+		if (strcmp(game_name, "Steam") == 0) {
+			char *common = cat_fnames(list[i], "steamapps/common");
+			find_games(common);
+			free(common);
+			continue;
+		}
+
+		sp = scan_for(list[i], game_name, g_scan_depth, isStartPoint);
 
 		if (sp)
 		{
-			uninst = scan_for(list[i], NULL, isUninstaller);
+			uninst = scan_for(list[i], NULL, g_scan_depth, isUninstaller);
 
 			gr = gr_init(game_name, list[i], sp, uninst);
 			if (!gr) {
@@ -166,21 +216,9 @@ find_games(const char *path)
 	return 0;
 }
 
-void
-check_gr_tab(struct Gr_tab tab)
-{
-	int i;
-	game_prop_t prop;
-	for (i = 0; i < tab.ngames; i++) {
-		gr_get_props(&tab.game_rec[i], prop);
-		gr_set_props(&tab.game_rec[i], &prop);
-	}
-}
-
 int
-scan_update()
+rescan(const char *path)
 {
-
 	return 0;
 }
 
@@ -199,13 +237,7 @@ scan(const char *path)
 		return -1;
 	}
 
-	/* TODO */
-	scan_inclusions(NULL);
-
-	db_read_settings();
-	db_read_cached_recs();
 	find_games(rpath);
-	check_gr_tab(gr_tab);
 	db_cache_recs();
 
 	return 0;

@@ -32,6 +32,33 @@ cat_fnames(const char *f, const char *s)
 	return estrdup(path);
 }
 
+char **
+pp_sort(char **pp, int check(const char *))
+{
+	int i, j;
+	char **res = (char **)ecalloc(pp_length(pp)+1, sizeof(char **));
+	for (i = j = 0; pp[i]; i++) {
+		if (check(pp[i])) {
+			res[j++] = pp[i];
+		}
+	}
+	
+	return res;
+}
+
+int
+pp_length(char **pp)
+{
+	int ret = 0;
+
+	if (pp) {
+		while (*pp++)
+			ret++;
+	}
+
+	return ret;
+}
+
 void
 pp_nfree(char **pp, int n)
 {
@@ -44,7 +71,7 @@ pp_nfree(char **pp, int n)
 void
 pp_free(char **pp)
 {
-	int n = pp_get_len(pp);
+	int n = pp_length(pp);
 	while (n--) {
 		free(pp[n]);
 	}
@@ -239,17 +266,3 @@ isUninstaller(const char *file_path, const char *null)
 
 	return 0;
 }
-
-int
-pp_get_len(char **pp)
-{
-	int ret = 0;
-
-	if (pp) {
-		while (*pp++)
-			ret++;
-	}
-
-	return ret;
-}
-

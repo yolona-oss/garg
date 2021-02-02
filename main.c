@@ -10,15 +10,22 @@
 #include "eprintf.h"
 #include "gamerec.h"
 #include "list.h"
+#include "run.h"
 
 /* vars */
-char *g_user_db;
+int done = 0;
 
-node_t *g_exceptions;
-node_t *g_exceptions_head;
-node_t *g_inclusions;
-node_t *g_inclusions_head;
+char g_user_db[PATH_MAX];
+char g_user_path[PATH_MAX];
 
+int g_scan_depth = 1;
+
+extern node_t *g_exceptions;
+extern node_t *g_exceptions_head;
+extern node_t *g_inclusions;
+extern node_t *g_inclusions_head;
+
+/* funcs */
 static void cleanup();
 static void terminate();
 static void usage();
@@ -26,17 +33,15 @@ static void usage();
 static void
 cleanup()
 {
-	if (g_user_db) free(g_user_db);
-	list_freeall(g_exceptions_head);
-	list_freeall(g_inclusions_head);
+	list_freeall(g_exceptions);
+	list_freeall(g_inclusions);
 	grt_free(gr_tab);
 }
 
 static void
 terminate()
 {
-	cleanup();
-	die("Aborting.");
+	done = 1;
 }
 
 static void
@@ -62,7 +67,6 @@ main(int argc, char **argv)
 	g_dflag = 0;
 
 	char ch = 0;
-	char path[PATH_MAX] = "";
 
 	struct option long_options[] = {
 		{ "db",     required_argument, NULL, 'c' },
@@ -75,7 +79,7 @@ main(int argc, char **argv)
 	while ((ch = getopt_long(argc, argv, "s:c:qdh", long_options, NULL)) != -1) {
 		switch (ch) {
 			case 'c':
-				g_user_db = estrdup(optarg);
+				strcpy(g_user_db, optarg);
 				break;
 			case 'q':
 				g_qflag = 1;
@@ -84,7 +88,7 @@ main(int argc, char **argv)
 				g_dflag = 1;
 				break;
 			case 's':
-				strcpy(path, optarg);
+				strcpy(g_user_path, optarg);
 				break;
 			case 'h':
 				usage();
@@ -98,17 +102,9 @@ main(int argc, char **argv)
 		}
 	}
 
-	/* ncurece interface */
-
-	scan(path[0] ? path : "./");
-
-	printf("##########[!END!]############");
-	for (int i = 0; i < gr_tab.ngames; i++) {
-		gr_print(&gr_tab.game_rec[i]);
-	}
-	printf("\n%d\n", gr_tab.ngames);
+	int rc = run();
 
 	cleanup();
 
-	return EXIT_SUCCESS;
+	return rc;
 }

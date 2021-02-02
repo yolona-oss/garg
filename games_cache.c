@@ -13,17 +13,10 @@
 #include "games_cache.h"
 #include "util.h"
 #include "eprintf.h"
-#include "gamerec.h"
-
-/* func */
-static int sql_gr_init(void *NotUsed, int argc, char **argv, char **azColName);
 
 /* vars */
-struct Gr_tab gr_tab;
+game_tab_t gr_tab;
 
-/* Check db file(~/cache/garg.db) for existence */
-/* Create if dont and add Games, Search tables */
-/* Get number of Table rows */
 int
 db_put_rec(sqlite3 *db, game_t *grp)
 {
@@ -32,17 +25,10 @@ db_put_rec(sqlite3 *db, game_t *grp)
 		return -1;
 	}
 
-	char *err_msg = 0;
+	//TODO Try trancactions
+	sqlite3_stmt *res;
 	int rc;
-	int len = PATH_MAX*2 +
-			FILENAME_MAX +
-			UINT_MAX_DIG*2 +
-			91;
-	char sql_req[len];
-
-	/* TODO try to update */
-	esnprintf(sql_req, len,
-		"INSERT INTO \
+	const char *sql_req = "INSERT INTO \
 		Games(\
 		id, \
 		play_time, \
@@ -53,24 +39,30 @@ db_put_rec(sqlite3 *db, game_t *grp)
 		start_point, \
 		start_argv, \
 		uninstaller) \
-		VALUES(%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s')", 
-		grp->id,
-		grp->play_time,
-		grp->name,
-		grp->icon ? grp->icon : "",
-		grp->gener ? grp->gener : "",
-		grp->location,
-		grp->start_point,
-		grp->start_argv ? grp->start_argv : "",
-		grp->uninstaller ? grp->uninstaller : "");
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?) \
+		ON CONFLICT (name) DO UPDATE SET id = id";
 
-	rc = sqlite3_exec(db, sql_req, 0, 0, &err_msg);
+	rc = sqlite3_prepare_v2(db, sql_req, -1, &res, 0);
 
-	if (rc != SQLITE_OK) {
-		warn("SQL error: %s", err_msg);
-		sqlite3_free(err_msg);
-		return -1;
+	if (rc == SQLITE_OK) {
+		sqlite3_bind_int(res, 1, grp->id);
+		sqlite3_bind_int(res, 2, grp->play_time);
+		sqlite3_bind_text(res, 3, grp->name, strlen(grp->name), NULL);
+
+		if (grp->icon)  sqlite3_bind_text(res, 4, grp->icon, strlen(grp->icon), NULL);
+		if (grp->gener) sqlite3_bind_text(res, 5, grp->gener, strlen(grp->gener), NULL);
+
+		sqlite3_bind_text(res, 6, grp->location, strlen(grp->location), NULL);
+		sqlite3_bind_text(res, 7, grp->start_point, strlen(grp->start_point), NULL);
+
+		if (grp->start_argv)  sqlite3_bind_text(res, 8, grp->start_argv, strlen(grp->start_argv), NULL);
+		if (grp->uninstaller) sqlite3_bind_text(res, 9, grp->uninstaller, strlen(grp->uninstaller), NULL);
+	} else {
+		warn("Failed to execute statement: %s", sqlite3_errmsg(db));
 	}
+
+	sqlite3_step(res);
+	sqlite3_finalize(res);
 
 	return 0;
 }
@@ -96,48 +88,6 @@ db_rm_rec(sqlite3 *db, int id)
 	return rc;
 }
 
-
-static int
-sql_gr_init(void *NotUsed, int argc, char **argv, char **azColName)
-{
-	game_t *grp;
-	char *nm, *val;
-	int i;
-
-	NotUsed = 0;
-
-	grp = (game_t *)ecalloc(1, sizeof*grp);
-
-	/* TODO */
-	for (i = 0; i < argc; i++) {
-		nm  = azColName[i];
-		val = argv[i];
-
-		if (!strcmp(nm, "id")) {
-			grp->id = atoi(val);
-		} else if (!strcmp(nm, "play_time")) {
-			grp->play_time = atoi(val);
-		} else if (!strcmp(nm, "name")) {
-			grp->name = val ? estrdup(val) : NULL;
-		} else if (!strcmp(nm, "ganer")) {
-			grp->gener = val ? estrdup(val) : NULL;
-		} else if (!strcmp(nm, "location")) {
-			grp->location = val ? estrdup(val) : NULL;
-		} else if (!strcmp(nm, "start_point")) {
-			grp->start_point = val ? estrdup(val) : NULL;
-		} else if (!strcmp(nm, "start_argv")) {
-			grp->start_argv = val ? estrdup(val) : NULL;
-		} else if (!strcmp(nm, "uninstaller")) {
-			grp->uninstaller = val ? estrdup(val) : NULL;
-		}
-	}
-
-	gr_add(grp);
-	free(grp);
-
-	return 0;
-}
-
 int
 db_read_cached_recs()
 {
@@ -149,15 +99,41 @@ db_read_cached_recs()
 		return -1;
 	}
 
-	char *err_msg;
-	char *sql_req = "SELECT * FROM Games;";
+	sqlite3_stmt *res;
+	char *sql_req = "SELECT * FROM Games";
 
-	int rc =sqlite3_exec(db, sql_req, sql_gr_init, 0, &err_msg);
+	int rc = sqlite3_prepare_v2(db, sql_req, -1, &res, 0);
 
-	if (rc != SQLITE_OK) {
-		warn("SQL error: %s", err_msg);
-		sqlite3_free(err_msg);
-		return -1;
+	if (rc == SQLITE_OK) {
+		char *tmp;
+		game_t *grp;
+		grp = (game_t *)ecalloc(1, sizeof*grp);
+
+		/*  0,  1,    2,    3,     4,   5,  6,    7,      8 */
+		/* id, pt, name, icon, gener, loc, sp, sarg, uninst */
+		while (sqlite3_step(res) == SQLITE_ROW) {
+			grp->id        = sqlite3_column_int(res, 0);
+			grp->play_time = sqlite3_column_int(res, 1);
+			grp->name = estrdup((const char*)sqlite3_column_text(res, 2));
+
+			tmp = (char *)sqlite3_column_text(res, 3);
+			grp->icon = tmp ? estrdup(tmp) : NULL;
+
+			tmp = (char *)sqlite3_column_text(res, 4);
+			grp->gener = tmp ? estrdup(tmp) : NULL;
+
+			grp->location    = estrdup((const char*)sqlite3_column_text(res, 5));
+			grp->start_point = estrdup((const char*)sqlite3_column_text(res, 6));
+
+			tmp = (char *)sqlite3_column_text(res, 7);
+			grp->start_argv = tmp ? estrdup(tmp) : NULL;
+
+			tmp = (char *)sqlite3_column_text(res, 8);
+			grp->uninstaller = tmp ? estrdup(tmp) : NULL;
+
+			gr_add(grp);
+		}
+		sqlite3_finalize(res);
 	}
 
 	sqlite3_close(db);
@@ -180,7 +156,7 @@ db_cache_recs(void)
 
 	for (i = 0; i < gr_tab.ngames; i++)
 	{
-		db_put_rec(db, &gr_tab.game_rec[i++]);
+		db_put_rec(db, &gr_tab.game_rec[i]);
 	}
 
 	sqlite3_close(db);

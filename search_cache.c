@@ -7,17 +7,18 @@
 #include "dbman.h"
 #include "search_cache.h"
 
+node_t *g_exceptions;
+node_t *g_exceptions_head;
+node_t *g_inclusions;
+node_t *g_inclusions_head;
 
-extern node_t *g_exceptions;
-extern node_t *g_exceptions_head;
-extern node_t *g_inclusions;
-extern node_t *g_inclusions_head;
-
-void
+node_t *
 add_exception(node_t *head, const char *name)
 {
 	node_t *exc  = list_new((char *)name);
 	g_exceptions = list_addhead(&g_exceptions, exc);
+
+	return g_exceptions;
 }
 
 int
@@ -25,7 +26,7 @@ sqlite_add_exception(void *NotUsed, int argc, char **argv, char **azColName)
 {
 	NotUsed = 0;
 
-	add_exception(g_exceptions, argv[0]);
+	g_exceptions = add_exception(g_exceptions, argv[0]);
 
 	return 0;
 }

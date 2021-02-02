@@ -12,7 +12,7 @@ db_init(void)
 {
 	char path[PATH_MAX];
 
-	if (!g_user_db) {
+	if (!g_user_db[0]) {
 		esnprintf(path, sizeof(path), "%s/%s", getenv("HOME"), ".cache/garg.db");
 		if (!path[0]) {
 			return NULL;
@@ -38,7 +38,7 @@ db_init(void)
 
 	char *crg = "CREATE TABLE IF NOT EXISTS Games( \
 	 		id INT, \
-	 		'play_time' INT, \
+	 		play_time INT, \
 	 		name TEXT, \
 	 		icon TEXT, \
 	 		gener TEXT, \

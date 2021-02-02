@@ -10,6 +10,7 @@ list_freeall(node_t *head)
 	node_t *next;
 	for ( ; head != NULL; head = next) {
 		next = head->next;
+		free(head->value);
 		free(head);
 	}
 }
@@ -45,6 +46,7 @@ list_rmname(node_t *head, char *name)
 				head = p->next;
 			else
 				prev->next = p->next;
+			free(p->value);
 			free(p);
 			return head;
 		}

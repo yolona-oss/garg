@@ -37,12 +37,13 @@ enum { GR_INIT = 1, GR_GROW = 2 };
 
 /* funcs */
 void grp_free(game_t *Game);
-void grt_free(struct Gr_tab Game);
+void grt_free(game_tab_t Game);
 
 void gr_print(game_t *Game);
 
 int  gr_get_props(game_t *grp, game_prop_t prop);
 void gr_set_props(game_t *grp, game_prop_t *prop);
+void check_gr_tab(game_tab_t gr_tab);
 
 game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller);
 void gr_edit(game_t *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);

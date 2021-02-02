@@ -6,6 +6,7 @@
 
 #include "gamerec.h"
 #include <sqlite3.h>
+#include <limits.h>
 
 /* funcs */
 int     db_rm_rec(sqlite3 *db, int n);
@@ -16,7 +17,7 @@ int db_cache_recs(void);
 int db_read_cached_recs(void);
 
 /* vars */
-extern struct Gr_tab gr_tab;
-extern char *g_user_db;
+extern game_tab_t gr_tab;
+extern char g_user_db[PATH_MAX];
 
 #endif

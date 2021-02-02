@@ -11,8 +11,6 @@
 //vars
 extern char *argv0;
 extern int g_qflag, g_dflag;
-extern node_t *g_exceptions;
-extern node_t *g_inclusions;
 
 //func
 char *cat_fnames(const char *f, const char *s);
@@ -21,7 +19,8 @@ void pp_nfree(char **pp, int n);
 void pp_free(char **pp);
 
 int pp_delete_dup(char **pp, int n);
-int pp_get_len(char **pp);
+int pp_length(char **pp);
+char **pp_sort(char **pp, int check(const char *));
 
 int isExist(const char *path);
 int isDirectory(const char *path);
