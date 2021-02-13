@@ -8,9 +8,7 @@
 #include <sqlite3.h>
 #include <math.h>
 
-#include "../main.h"
 #include "dbman.h"
-#include "games_cache.h"
 #include "../utils/util.h"
 #include "../utils/eprintf.h"
 
@@ -91,7 +89,7 @@ db_rm_rec(sqlite3 *db, int id)
 int
 db_read_cached_recs()
 {
-	printf("Reading game records...\n");
+	/* printf("Reading game records...\n"); */
 
 	sqlite3 *db;
 	if (!(db=db_init())) {
@@ -147,7 +145,7 @@ db_cache_recs(void)
 	int i;
 	sqlite3 *db;
 
-	printf("Writing game records...\n"); fflush(stdout);
+	/* printf("Writing game records...\n"); fflush(stdout); */
 
 	if (!(db=db_init())) {
 		warn("Cant write cache.");

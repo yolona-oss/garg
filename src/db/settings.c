@@ -2,15 +2,12 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "../utils/list.h"
 #include "../utils/eprintf.h"
+#include "../event/event.h"
 #include "dbman.h"
-#include "search_cache.h"
 
 node_t *g_exceptions;
-node_t *g_exceptions_head;
 node_t *g_inclusions;
-node_t *g_inclusions_head;
 
 node_t *
 add_exception(node_t *head, const char *name)
@@ -67,7 +64,7 @@ db_get_exceptions(sqlite3 *db)
 int
 db_read_settings(void)
 {
-	printf("Reading settings...\n"); fflush(stdout);
+	set_event(SCAN_START);
 
 	sqlite3 *db;
 	if (!(db=db_init())) {
@@ -79,6 +76,7 @@ db_read_settings(void)
 
 	sqlite3_close(db);
 
+	set_event(SCAN_END);
 	return 1;
 }
 

@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <signal.h>
 #include <getopt.h>
+#include <ctype.h>
 
 #include "main.h"
 #include "run/run.h"
@@ -15,15 +16,13 @@
 /* vars */
 int done = 0;
 
-char g_user_db[PATH_MAX];
-char g_user_path[PATH_MAX];
+char g_user_db[PATH_MAX];   /* path to specific sqlite db */
+char g_user_path[PATH_MAX]; /* scan path */
 
-int g_scan_depth = 1;
+int g_scan_depth = 1; /* recursion level in scan */
 
 extern node_t *g_exceptions;
-extern node_t *g_exceptions_head;
 extern node_t *g_inclusions;
-extern node_t *g_inclusions_head;
 
 /* funcs */
 static void cleanup();
@@ -67,13 +66,15 @@ main(int argc, char **argv)
 	g_dflag = 0;
 
 	char ch = 0;
+	int val = 0;
 
 	struct option long_options[] = {
 		{ "db",     required_argument, NULL, 'c' },
 		{ "quiet",  no_argument,       NULL, 'q' },
 		{ "debug",  no_argument,       NULL, 'd' },
 		{ "help",   no_argument,       NULL, 'h' },
-		{ "scan",   required_argument, NULL, 's' }
+		{ "scan",   required_argument, NULL, 's' },
+		{ "scan-depth", required_argument, NULL, 'p' },
 	};
 
 	while ((ch = getopt_long(argc, argv, "s:c:qdh", long_options, NULL)) != -1) {
@@ -89,6 +90,16 @@ main(int argc, char **argv)
 				break;
 			case 's':
 				strcpy(g_user_path, optarg);
+				break;
+			case 'p':
+				if ((val=atoi(optarg))) {
+					if (val > 5) {
+						printf("Scanning can take a long time\n");
+					}
+					g_scan_depth = val;
+				} else {
+					warn("Dissatisfy value: %s", optarg);
+				}
 				break;
 			case 'h':
 				usage();

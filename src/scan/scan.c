@@ -160,7 +160,7 @@ find_games(const char *path)
 
 	/* char *(*scanner)(const char *, const char *, int, int func(const char *, const char *)) = NULL; */
 
-	printf("Finding games...\n");
+	/* printf("Finding games...\n"); */
 
 	char **list = get_file_list(path);
 	if (!list) {
@@ -216,10 +216,10 @@ find_games(const char *path)
 	return 0;
 }
 
-int
-rescan(const char *path)
+void
+update(void)
 {
-	return 0;
+	check_gr_tab(gr_tab);
 }
 
 int

@@ -8,6 +8,7 @@ extern int done;
 extern char g_user_path[PATH_MAX];
 
 /* funcs */
+void *resizeHandler(int);
 int run(void);
 
 #endif

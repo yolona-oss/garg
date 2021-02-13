@@ -1,14 +1,12 @@
 CC = ccache gcc
 
-
-LIB_SQLITE  = $(shell pkg-config --libs sqlite3)
-
 INC     =
 LDFLAGS =
-LDLIBS  = $(LIB_SQLITE)
+LDLIBS  = -l sqlite3 \
+		  -l ncursesw
 
-CFLAGS  = -g -c -Wall -xc -O2 $(INC)
-CFLAGS +=
+CFLAGS  = -g -c -Wall -xc -O2 \
+		  -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600
 
 SOURCES    = src/main.c \
 			 src/run/run.c \
@@ -16,7 +14,9 @@ SOURCES    = src/main.c \
 			 src/games/gamerec.c \
 			 src/utils/util.c src/utils/eprintf.c \
 			 src/utils/list.c \
-			 src/db/dbman.c src/db/search_cache.c src/db/games_cache.c
+			 src/db/dbman.c src/db/settings.c src/db/games.c \
+			 src/event/event.c \
+			 src/tui/tui.c src/tui/util.c
 OBJECTS    = $(SOURCES:.c=.o)
 EXECUTABLE = garg
 

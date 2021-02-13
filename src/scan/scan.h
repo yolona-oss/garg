@@ -19,8 +19,7 @@ extern int g_scan_depth;
 /* funcs */
 int scan_inclusions(const char *path);
 int scan(const char *path);
-int rescan(const char *path);
-int update(const char *path);
+void update(void);
 
 /* special scans */
 /* char *scan_steam(const char *path, const char *null); */
