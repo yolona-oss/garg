@@ -216,12 +216,6 @@ find_games(const char *path)
 	return 0;
 }
 
-void
-update(void)
-{
-	check_gr_tab(gr_tab);
-}
-
 int
 scan(const char *path)
 {

@@ -66,7 +66,7 @@ die(const char *fmt, ...)
 	exit(1);
 }
 
-static int
+int
 evsnprintf(char *str, size_t size, const char *fmt, va_list ap)
 {
 	int ret;

@@ -28,19 +28,13 @@ difftimespec(struct timespec *res, struct timespec *a, struct timespec *b)
 	               (a->tv_nsec < b->tv_nsec) * 1E9;
 }
 
-void
-resizeHandler(int sig)
-{
-	getmaxyx(stdscr, g_scr_h, g_scr_w);
-}
-
 static int
 pre(void)
 {
+	/* setupping resize handler */
 	signal(SIGWINCH, resizeHandler);
 
-	initscr();
-	show_init_scr();
+	init_tui();
 
 	db_read_settings();
 	db_read_cached_recs();
@@ -50,6 +44,9 @@ pre(void)
 		scan(g_user_path);
 	}
 
+	check_gr_tab(gr_tab);
+	show_game_list(IDLE);
+
 	return 0;
 }
 
@@ -58,38 +55,41 @@ run()
 {
 	if ( pre() ) {
 		warn("Cant pre initiate run");
-		return -1;
+		return 1;
 	}
 	
 	struct timespec start, current, diff, intspec, wait;
-	int event;
-	int key;
+	int event, key;
 
-	nodelay(stdscr, true);
+	enum MOVEMENT direction;
+
 	while (!done) {
 		if (clock_gettime(CLOCK_MONOTONIC, &start) < 0) {
 			die("clock_gettime:");
 		}
-		
-		noecho();
+
 		if ((key = getch()) != ERR) {
 			switch (key)
 			{
 				case 'k':
-					waddstr(stdscr, "UP\n");
+					direction = UP;
 					break;
 				case 'j':
-					waddstr(stdscr, "DOWN\n");
+					direction = DOWN;
 					break;
-				case 'h':
-					waddstr(stdscr, "LEFT\n");
-					break;
-				case 'l':
-					waddstr(stdscr, "RIGHT\n");
+
+				case 'q':
+					done = 1;
 					break;
 			}
+
+			if (direction != IDLE) {
+				show_game_list(direction);
+			}
+			direction = IDLE;
 		}
-		echo();
+
+		show_status_bar();
 
 		/* EVENT HENDLING */
 		while ((event=pull_event()) >= 0) {
@@ -99,9 +99,8 @@ run()
 		}
 
 		/* UPDATER */
-		update();
+		/* check_gr_tab(gr_tab); */
 
-		wrefresh(stdscr);
 		if (!done) {
 			if (clock_gettime(CLOCK_MONOTONIC, &current) < 0) {
 				die("clock_gettime:");

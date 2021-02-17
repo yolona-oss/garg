@@ -2,6 +2,7 @@
 #define _TUI_EVENT_H_
 
 enum events {
+	_N,
 	N_EVENTS,
 };
 

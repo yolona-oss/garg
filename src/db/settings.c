@@ -64,7 +64,7 @@ db_get_exceptions(sqlite3 *db)
 int
 db_read_settings(void)
 {
-	set_event(SCAN_START);
+	/* set_event(SCAN_START); */
 
 	sqlite3 *db;
 	if (!(db=db_init())) {
@@ -76,7 +76,7 @@ db_read_settings(void)
 
 	sqlite3_close(db);
 
-	set_event(SCAN_END);
+	/* set_event(SCAN_END); */
 	return 1;
 }
 

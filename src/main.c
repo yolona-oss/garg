@@ -14,6 +14,8 @@
 #include "games/gamerec.h"
 
 /* vars */
+char buf[4096];
+
 int done = 0;
 
 char g_user_db[PATH_MAX];   /* path to specific sqlite db */

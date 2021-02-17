@@ -14,7 +14,7 @@ extern int g_qflag, g_dflag;
 extern char g_user_db[PATH_MAX];
 extern char g_user_path[PATH_MAX];
 
-extern int g_scan_depth; //TODO add start up key
+extern int g_scan_depth;
 
 extern game_tab_t gr_tab;
 

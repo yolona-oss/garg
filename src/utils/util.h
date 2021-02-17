@@ -9,11 +9,14 @@
 #include "list.h"
 
 //vars
+extern char buf[4096];
+
 extern char *argv0;
 extern int g_qflag, g_dflag;
 
 //func
 char *cat_fnames(const char *f, const char *s);
+char *cut(char *str, int width);
 
 void pp_nfree(char **pp, int n);
 void pp_free(char **pp);
@@ -30,5 +33,7 @@ int isExecuteble(const char *path);
 int isExcludeName(const char *name);
 int isStartPoint(const char *file, const char *gameName);
 int isUninstaller(const char *file_path, const char *null);
+
+char *bprintf(const char *fmt, ...);
 
 #endif

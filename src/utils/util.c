@@ -32,6 +32,23 @@ cat_fnames(const char *f, const char *s)
 	return estrdup(path);
 }
 
+char *
+cut(char *str, int width)
+{
+	char res[width+1];
+
+	if (strlen(str) > 1) {
+		esnprintf(res, sizeof(char) * (width - 2),
+				"%s", str);
+		/* strcat(res, "..."); */
+	} else {
+		esnprintf(res, sizeof(res),
+				"%s", str);
+	}
+
+	return bprintf("%s", res);
+}
+
 char **
 pp_sort(char **pp, int check(const char *))
 {
@@ -265,4 +282,17 @@ isUninstaller(const char *file_path, const char *null)
 	regfree(&regex);
 
 	return 0;
+}
+
+char *
+bprintf(const char *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, fmt);
+	ret = evsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+
+	return (ret < 0) ? NULL : buf;
 }

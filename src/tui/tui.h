@@ -1,6 +1,7 @@
 #ifndef _TUI_H_
 #define _TUI_H_
 
+#include <ncurses.h>
 #include "../games/gamerec.h"
 
 typedef struct buf_t buf_t;
@@ -9,21 +10,26 @@ struct buf_t {
 	short status; /* busyness */
 };
 
-/* vars */
-extern buf_t event_buf;
-
-extern int g_scr_w;
-extern int g_scr_h;
+enum MOVEMENT {
+	UP,
+	DOWN,
+	LEFT,
+	RIGHT,
+	IDLE,
+};
 
 /* funcs */
+void resizeHandler(int sig);
+void init_tui();
+
 void show_init_scr();
 void show_status_bar();
-void show_game_entry(game_t gr);
+void show_game_list(enum MOVEMENT d);
 char *input_field();
 
-void add_buf(char *str);
+void update_game_list();
+void update_status_bar();
 
 /* util */
-void cut(char *str, char *res, int width);
 
 #endif
