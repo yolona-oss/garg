@@ -13,12 +13,17 @@
 
 #include "../tui/tui.h"
 
+#define _FPS 60
+
 #define M_SEC(n) 1000*n
 
-static const unsigned int interval = M_SEC(0.05);
+/* vars */
+static const unsigned int interval = M_SEC(1/_FPS);
 
-extern char g_user_path[PATH_MAX];
-extern int done;
+/* funcs */
+static void difftimespec(struct timespec *res, struct timespec *a, struct timespec *b);
+static int pre(void);
+static int post(void);
 
 static void
 difftimespec(struct timespec *res, struct timespec *a, struct timespec *b)
@@ -45,7 +50,17 @@ pre(void)
 	}
 
 	check_gr_tab(gr_tab);
-	show_game_list(IDLE);
+	/* show_game_list(IDLE); */
+	init_game_menu();
+
+	return 0;
+}
+
+static int
+post(void)
+{
+	destroy_game_menu();
+	endwin();
 
 	return 0;
 }
@@ -59,35 +74,15 @@ run()
 	}
 	
 	struct timespec start, current, diff, intspec, wait;
-	int event, key;
+	int event;
 
-	enum MOVEMENT direction;
 
 	while (!done) {
 		if (clock_gettime(CLOCK_MONOTONIC, &start) < 0) {
 			die("clock_gettime:");
 		}
 
-		if ((key = getch()) != ERR) {
-			switch (key)
-			{
-				case 'k':
-					direction = UP;
-					break;
-				case 'j':
-					direction = DOWN;
-					break;
-
-				case 'q':
-					done = 1;
-					break;
-			}
-
-			if (direction != IDLE) {
-				show_game_list(direction);
-			}
-			direction = IDLE;
-		}
+		input_handle();
 
 		show_status_bar();
 
@@ -100,6 +95,7 @@ run()
 
 		/* UPDATER */
 		/* check_gr_tab(gr_tab); */
+		doupdate(); /* update screen */
 
 		if (!done) {
 			if (clock_gettime(CLOCK_MONOTONIC, &current) < 0) {
@@ -120,7 +116,7 @@ run()
 		}
 	}
 
-	endwin();
+	post();
 
 	return 0;
 }

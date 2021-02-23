@@ -49,7 +49,7 @@ static void
 usage()
 {
 	/* TODO */
-	die("--db=<PATH> -[qd] -s <PATH>");
+	die("--db=<PATH> -[qd] -s <PATH> --scan-depth=<depth>");
 }
 
 int

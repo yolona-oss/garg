@@ -3,7 +3,8 @@ CC = ccache gcc
 INC     =
 LDFLAGS =
 LDLIBS  = -l sqlite3 \
-		  -l ncursesw
+		  -l ncursesw \
+		  -l menu
 
 CFLAGS  = -g -c -Wall -xc -O2 \
 		  -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600
@@ -16,7 +17,7 @@ SOURCES    = src/main.c \
 			 src/utils/list.c \
 			 src/db/dbman.c src/db/settings.c src/db/games.c \
 			 src/event/event.c \
-			 src/tui/tui.c src/tui/util.c
+			 src/tui/tui.c src/tui/util.c src/tui/input.c
 OBJECTS    = $(SOURCES:.c=.o)
 EXECUTABLE = garg
 

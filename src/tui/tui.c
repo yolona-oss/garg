@@ -1,30 +1,15 @@
 #include <stdio.h>
-#include <stdlib.h> //tmp
+#include <stdlib.h>
 #include <string.h>
 #include <ncurses.h>
+#include <menu.h>
+
+#include <unistd.h>
 
 #include "../main.h"
 #include "../utils/eprintf.h"
 #include "../utils/util.h"
 #include "tui.h"
-
-#define PERC_OF(n, p) n*p/100
-
-static int g_scr_w,
-		   g_scr_h;
-
-static int g_max_gn,
-		   g_max_gen,
-		   g_max_stat;
-
-static int g_perc_field_gn,
-		   g_perc_field_gen,
-		   g_perc_field_stat;
-
-static int g_list_i = 0;
-
-static WINDOW *w_game_list,
-			  *w_status_bar;
 
 /* status - [lsu] */
 /*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
@@ -35,109 +20,204 @@ static WINDOW *w_game_list,
 /* [NGAMES]                        [YXX] */
 /*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 
+/* vars */
+static char status_buf[4024] = {0};
+
+static int COLUMNS, ROWS;
+
+static int g_max_gn,
+		   g_max_gen,
+		   g_max_stat;
+
+static int g_perc_field_gn   = 60,
+		   g_perc_field_gen  = 30,
+		   g_perc_field_stat = 10;
+
+static MENU *g_menu_list;
+static ITEM **g_entries;
+
+static WINDOW *w_game_list,
+			  *w_status_bar;
+
+/* funcs */
+static char *rec_status(game_t gr);
+static char *game_entry(game_t gr);
+static void add_str_status_buf(const char *);
+
+static void
+add_str_status_buf(const char *str)
+{
+	esnprintf(status_buf, sizeof(status_buf), "%s", str);
+}
+
+static char *
+rec_status(game_t gr)
+{
+	char res[5] = {};
+
+	if (gr.properties.icon) res[0] = 'i';
+	else                    res[0] = 'i';
+
+	if (gr.properties.location) res[1] = 'l';
+	else                        res[1] = 'l';
+
+	if (gr.properties.start_point) res[2] = 's';
+	else                           res[2] = 's';
+
+	if (gr.properties.uninstaller) res[3] = 'u';
+	else                           res[3] = 'u';
+
+	res[4] = '\0';
+
+	return bprintf("[%s]", res);
+}
+
+static char *
+game_entry(game_t gr)
+{
+	int len;
+	char *tmp;
+
+	char gn[g_max_gn+1];
+	char gener[g_max_gen+1];
+	char stat[g_max_stat+1];
+
+	/* filling areas with spaces */
+	memset(gn,    ' ', g_max_gn);
+	memset(gener, ' ', g_max_gen);
+	memset(stat,  ' ', g_max_stat);
+	
+	/* adding terminating char */
+	gn[g_max_gn] = '\0';
+	gener[g_max_gen] = '\0';
+	stat[g_max_stat] = '\0';
+
+	/* game name */
+	tmp = cut(gr.name, g_max_gn);
+	memmove(gn, tmp, strlen(tmp));
+
+	/* gener */
+	memmove(&gener[CENTER(g_max_gen, 5)], "GENER", 5);
+
+	/* game entry stats */
+	tmp = rec_status(gr);
+	len = strlen(tmp);
+	memmove(&stat[CENTER(g_max_stat, len)], tmp, len);
+
+	return bprintf("%s %s %s", gn, gener, stat);
+}
+
 void
 resizeHandler(int sig)
 {
-	getmaxyx(stdscr, g_scr_h, g_scr_w);
+	getmaxyx(stdscr, ROWS, COLUMNS);
 }
 
 void
 init_tui()
 {
 	initscr();
-	nodelay(stdscr, true);
+	timeout(0);  /* input delay */
 	curs_set(0); /* invisible cursor */
 	noecho();    /* no echo input */
 
-	getmaxyx(stdscr, g_scr_h, g_scr_w);
+	getmaxyx(stdscr, ROWS, COLUMNS);
 
 	/* creating windows */
-	w_game_list  = newwin(g_scr_h-1, g_scr_w, 0, 0);
-	w_status_bar = newwin(1, g_scr_w, g_scr_h-1, 0);
+	w_game_list  = newwin(ROWS-1, COLUMNS, 0, 0);
+	w_status_bar = newwin(1, COLUMNS, ROWS-1, 0);
 
-	/* fields percentages */
-	g_perc_field_gn = 60;
-	g_perc_field_gen = 30;
-	g_perc_field_stat = 10;
+	g_max_gn   = COLUMNS - PERC_OF(COLUMNS, (100-g_perc_field_gn)) - 1;
+	g_max_gen  = COLUMNS - PERC_OF(COLUMNS, (100-g_perc_field_gen)) - 1;
+	g_max_stat = COLUMNS - PERC_OF(COLUMNS, (100-g_perc_field_stat)) - 1;
 
-	g_max_gn   = g_scr_w - PERC_OF(g_scr_w, (100-g_perc_field_gn));
-	g_max_gen  = g_scr_w - PERC_OF(g_scr_w, (100-g_perc_field_gen));
-	g_max_stat = g_scr_w - PERC_OF(g_scr_w, (100-g_perc_field_stat));
+	if (g_max_stat < 7) {
+		int need = 7-g_max_stat;
+
+		if (IS_ODD(need)) {
+			g_max_gn -= need/2+1;
+		} else {
+			g_max_gn -= need/2;
+		}
+
+		g_max_gen -= need/2;
+		g_max_stat = 7;
+	}
 }
 
 void
-show_init_scr()
+init_game_menu()
 {
-	
+	g_entries = (ITEM **)calloc(gr_tab.ngames+1, sizeof(ITEM *));
+	char *tmp = NULL;
+
+	int i;
+	for (i = 0; i < gr_tab.ngames; i++) {
+		tmp = itoa(gr_tab.game_rec[i].id, 10);
+		g_entries[i] = new_item(estrdup(game_entry(gr_tab.game_rec[i])), estrdup(tmp));
+	}
+	g_entries[gr_tab.ngames] = (ITEM *)NULL;
+
+	/* creating menu */
+	g_menu_list = new_menu((ITEM **)g_entries);
+
+	/* binding menu to windows */
+	WINDOW *ms_win = derwin(w_game_list, ROWS-1, COLUMNS, 0, 0);
+	set_menu_win(g_menu_list, w_game_list);
+	set_menu_sub(g_menu_list, ms_win);
+
+	set_menu_format(g_menu_list, ROWS-1, 0);
+
+	set_menu_mark(g_menu_list, "");
+
+	post_menu(g_menu_list);
+	wnoutrefresh(w_game_list);
+}
+
+void
+destroy_game_menu()
+{
+	unpost_menu(g_menu_list);
+	free_menu(g_menu_list);
+
+	for (int i = 0; i < gr_tab.ngames; i++) {
+		free_item(g_entries[i]);
+	}
+	free(g_entries);
 }
 
 void
 show_status_bar()
 {
 	wmove(w_status_bar, 0, 0);
-	wprintw(w_status_bar, "%d", g_list_i);
-	update_status_bar();
-}
+	wclrtobot(w_status_bar);
+	wprintw(w_status_bar, "gamesc: %d; cur: %d, cur_gid: %s, h:%d, w:%d, buf: %s",
+			gr_tab.ngames, item_index(current_item(g_menu_list))+1, item_description(current_item(g_menu_list)), ROWS, COLUMNS,
+			status_buf);
 
-static char *
-game_status(game_t gr)
-{
-	char res[5] = {};
-	memset(res, 0, 5);
-
-	if (gr.properties.icon) strncat(res, "i", 4);
-	else                    strncat(res, "i", 4); 
-
-	if (gr.properties.location) strncat(res, "l", 4);
-	else strncat(res, "l", 4);
-
-	if (gr.properties.start_point) strncat(res, "s", 4);
-	else strncat(res, "s", 4);
-
-	if (gr.properties.uninstaller) strncat(res, "u", 4);
-	else strncat(res, "u", 4);
-
-	return bprintf("%s", res);
-}
-
-static void
-show_game_entry(game_t gr)
-{
-	char *gana = cut(gr.name, g_max_gn);
-	gana = cut(gr.name, g_max_gn);
-
-	char tmp[g_max_gn+1];
-	memset(tmp, ' ', g_max_gn);
-	memmove(tmp, gana, strlen(gana));
-
-	wprintw(w_game_list, "%s ", tmp);
-	wprintw(w_game_list, "%s", game_status(gr));
-	wprintw(w_game_list, "\n");
+	wnoutrefresh(w_status_bar);
 }
 
 void
-show_game_list(enum MOVEMENT d)
+menu_move(enum MENU_ACT a)
 {
-	if (d != IDLE) {
-		if (d == UP && g_list_i > 0)
-			g_list_i--;
-		else if (d == DOWN && g_list_i < gr_tab.ngames-(g_scr_h-1))
-			g_list_i++;
+	if (a == M_UP) {
+		menu_driver(g_menu_list, REQ_UP_ITEM);
+	} else if (a == M_DOWN) {
+		menu_driver(g_menu_list, REQ_DOWN_ITEM);
+	} else if (a == M_DPAGE) {
+		menu_driver(g_menu_list, REQ_SCR_DPAGE);
+	} else if (a == M_UPAGE) {
+		menu_driver(g_menu_list, REQ_SCR_UPAGE);
+	} else if (a == SELECT) {
+		/* menu_driver(g_menu_list, REQ_TOGGLE_ITEM); */
+		int id = item_index(current_item(g_menu_list));
+		char *path = gr_tab.game_rec[id].start_point;
+		char run[strlen(path) + 3];
+		esnprintf(run, sizeof(run), "/.%s", path);
+		add_str_status_buf(run);
+		execvp(run, NULL);
 	}
 
-	wmove(w_game_list, 0, 0);
-	for (int i = g_list_i; i < g_list_i+g_scr_h-1; i++) {
-		show_game_entry(gr_tab.game_rec[i]);
-	}
-	update_game_list();
+	wnoutrefresh(w_game_list);
 }
-
-char *
-input_field()
-{
-
-	return NULL;
-}
-
-void update_game_list()  { wrefresh(w_game_list); }
-void update_status_bar() { wrefresh(w_status_bar); }

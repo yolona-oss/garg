@@ -10,9 +10,6 @@
 #include "util.h"
 #include "list.h"
 
-extern node_t *g_exceptions;
-extern node_t *g_inclusions;
-
 char *
 cat_fnames(const char *f, const char *s)
 {
@@ -36,11 +33,12 @@ char *
 cut(char *str, int width)
 {
 	char res[width+1];
+	int len = strlen(str);
 
-	if (strlen(str) > 1) {
+	if (len > 1 && len > width) {
 		esnprintf(res, sizeof(char) * (width - 2),
 				"%s", str);
-		/* strcat(res, "..."); */
+		strcat(res, "...");
 	} else {
 		esnprintf(res, sizeof(res),
 				"%s", str);
@@ -295,4 +293,69 @@ bprintf(const char *fmt, ...)
 	va_end(ap);
 
 	return (ret < 0) ? NULL : buf;
+}
+
+char*
+itoa(int val, int base)
+{
+	static char buf[32] = {0};
+	int i = 30;
+	for(; val && i ; --i, val /= base)
+		buf[i] = "0123456789abcdef"[val % base];
+	return &buf[i+1];
+}
+
+/* char * */
+/* itoa(int n) { */
+/* 	int dig = getCountsOfDigits(n); */
+/* 	char ret[dig+1]; */
+
+/* 	for (int i = dig; i >= 0; i--) { */
+/* 		ret[i] = '0'; */
+/* 		n /= 10; */
+/* 	} */
+/* 	ret[dig] = '\0'; */
+
+/* 	return bprintf("%s", ret); */
+/* } */
+
+int
+getCountsOfDigits(int n) {
+	if (n < 100000) {
+		if (n < 100) {
+			if (n < 10) {
+				return 1;
+			} else {
+				return 2;
+			}
+		} else {
+			if (n < 1000) {
+				return 3;
+			} else {
+				if (n < 10000) {
+					return 4;
+				} else {
+					return 5;
+				}
+			}
+		}
+	} else {
+		if (n < 10000000) {
+			if (n < 1000000) {
+				return 6;
+			} else {
+				return 7;
+			}
+		} else {
+			if (n < 100000000) {
+				return 8;
+			} else {
+				if (n < 1000000000) {
+					return 9;
+				} else {
+					return 10;
+				}
+			}
+		}
+	}
 }
