@@ -60,6 +60,10 @@ static int
 post(void)
 {
 	destroy_game_menu();
+
+	curs_set(1); /* TODO */
+	echo();
+
 	endwin();
 
 	return 0;

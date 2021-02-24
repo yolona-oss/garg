@@ -210,13 +210,10 @@ menu_move(enum MENU_ACT a)
 	} else if (a == M_UPAGE) {
 		menu_driver(g_menu_list, REQ_SCR_UPAGE);
 	} else if (a == SELECT) {
-		/* menu_driver(g_menu_list, REQ_TOGGLE_ITEM); */
-		int id = item_index(current_item(g_menu_list));
-		char *path = gr_tab.game_rec[id].start_point;
-		char run[strlen(path) + 3];
-		esnprintf(run, sizeof(run), "/.%s", path);
-		add_str_status_buf(run);
-		execvp(run, NULL);
+		menu_driver(g_menu_list, REQ_TOGGLE_ITEM);
+
+		int id = grt_ind(atoi(item_description(current_item(g_menu_list))));
+		run_game(id);
 	}
 
 	wnoutrefresh(w_game_list);

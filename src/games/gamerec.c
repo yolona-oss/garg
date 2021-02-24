@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <limits.h>
 
 #include "../utils/util.h"
@@ -9,6 +10,20 @@
 
 /* vars */
 extern game_tab_t gr_tab;
+
+int
+run_game(int id)
+{
+	char *path = gr_tab.game_rec[id].start_point;
+	char run[strlen(path) + 3];
+
+	esnprintf(run, sizeof(run), "/.%s", path);
+
+	/* add_str_status_buf(run); */
+	execvp(run, NULL);
+
+	return 0;
+}
 
 void
 grp_free(game_t *grp)
@@ -248,6 +263,19 @@ gr_delete(int id)
 	return 0;
 }
 
+game_t *
+gr_find(int id)
+{
+	int i;
+	for (i = 0; i < gr_tab.ngames; i++) {
+		if (gr_tab.game_rec[i].id == id) {
+			return &gr_tab.game_rec[i];
+		}
+	}
+
+	return NULL;
+}
+
 int
 gr_is_dup(game_t game)
 {
@@ -260,6 +288,19 @@ gr_is_dup(game_t game)
 	}
 
 	return 0;
+}
+
+int
+grt_ind(int id)
+{
+	int i;
+	for (i = 0; i < gr_tab.ngames; i++) {
+		if (gr_tab.game_rec[i].id == id) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 int
