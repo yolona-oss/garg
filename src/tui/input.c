@@ -1,36 +1,50 @@
 #include "tui.h"
 
-static char i_buf[24] = {""};
+#define I_BUF_MAX 24
 
-static int
-endb(void)
+static char i_buf[I_BUF_MAX+1] = {0};
+
+/* returns index of last char in i_buf */
+int
+len_b(void)
 {
 	int i = 0;
-	while (i_buf[i] != '\0')
-		i++;
+	while (i_buf[i++] != '\0')
+		;
 	return i;
 }
 
+/* returns first char in i_buf */
 char
-start_ibuf(void)
+start_b(void)
 {
 	return i_buf[0];
 }
 
-void
-append_ibuf(char c)
+/* appending i_buf if can.
+ * and return 0 if can,
+ * otherwise 1 */
+int
+append_b(char c)
 {
-	i_buf[endb()+1] = c;
+	int len = len_b();
+	/* if (len < I_BUF_MAX) { */
+		i_buf[len-1] = c;
+		i_buf[len] = '\0';
+		return 0;
+	/* } */
+
+	/* return 1; */
 }
 
 void
-drop_ibuf(void)
+drop_b(void)
 {
 	i_buf[0] = '\0';
 }
 
-void
-input_handle(void)
+enum MENU_ACT
+input_command(void)
 {
 	enum MENU_ACT action = NOTHING;
 	int key;
@@ -38,6 +52,7 @@ input_handle(void)
 	if ((key = getch()) != ERR) {
 		switch (key)
 		{
+			/* single */
 			case 'k':
 				action = M_UP;
 				break;
@@ -53,13 +68,29 @@ input_handle(void)
 			case CTRL('b'):
 				action = M_UPAGE;
 				break;
+			case 'G':
+				action = M_LAST;
+				break;
 
 			case 'q':
 				done = 1;
 				break;
-		}
 
-		menu_move(action);
-		action = NOTHING;
+			/* sequences */
+			case 'g':
+				;
+				int len = len_b();
+				if (len == 1) {
+					append_b('g');
+				} else if (len == 2) {
+					if (start_b() == 'g') {
+						action = M_FIRST;
+					}
+					drop_b();
+				}
+				break;
+		}
 	}
+
+	return action;
 }

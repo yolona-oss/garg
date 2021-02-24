@@ -295,7 +295,7 @@ bprintf(const char *fmt, ...)
 	return (ret < 0) ? NULL : buf;
 }
 
-char*
+char *
 itoa(int val, int base)
 {
 	static char buf[32] = {0};
@@ -304,20 +304,6 @@ itoa(int val, int base)
 		buf[i] = "0123456789abcdef"[val % base];
 	return &buf[i+1];
 }
-
-/* char * */
-/* itoa(int n) { */
-/* 	int dig = getCountsOfDigits(n); */
-/* 	char ret[dig+1]; */
-
-/* 	for (int i = dig; i >= 0; i--) { */
-/* 		ret[i] = '0'; */
-/* 		n /= 10; */
-/* 	} */
-/* 	ret[dig] = '\0'; */
-
-/* 	return bprintf("%s", ret); */
-/* } */
 
 int
 getCountsOfDigits(int n) {

@@ -1,27 +1,43 @@
 #include <stdio.h>
 
-#include "event.h"
+#include "garg_event.h"
 
-char event_list[N_EVENTS];
+static event_t event_list[N_EVENTS];
 
 void
-set_event(int en)
+setup_event(enum EVENT e, int (*func)(void))
 {
-	event_list[en] = 1;
+	event_list[e].func = func;
 }
 
 void
-clean_event(int en)
+do_event_func(enum EVENT e)
 {
-	event_list[en] = 0;
+	event_list[e].func();
+}
+
+void
+up_event(int en)
+{
+	event_list[en].flag = 1;
+}
+
+void
+close_event(int en)
+{
+	event_list[en].flag = 0;
 }
 
 int
 pull_event()
 {
-	for (int i = 0; i < N_EVENTS; i++) {
-		if (event_list[i] == 1) {
-			clean_event(i);
+	int i;
+	check_timer();
+	for (i = 0; i < N_EVENTS; i++) {
+		event_list[i].func();
+
+		if (event_list[i].flag == 1) {
+			close_event(i);
 			return i;
 		}
 	}

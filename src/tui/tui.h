@@ -4,6 +4,8 @@
 #include <ncurses.h>
 #include "../games/gamerec.h"
 
+#define MAX_STATUS_BUF 4096
+
 #define CENTER(s, d) (s-d)/2
 #define RIGHT(s, d) (s-d)
 
@@ -15,6 +17,9 @@ enum MENU_ACT {
 	M_UPAGE,
 	M_DPAGE,
 
+	M_FIRST,
+	M_LAST,
+
 	SELECT,
 	BACK,
 
@@ -23,24 +28,32 @@ enum MENU_ACT {
 
 /* vars */
 extern int done;
+extern char status_buf[MAX_STATUS_BUF];
 
 /* funcs */
 void resizeHandler(int sig);
 
 void init_tui(void);
+void destroy_tui(void);
+
 void init_game_menu(void);
 void destroy_game_menu(void);
 
 void show_status_bar(void);
+void add_str_status_buf(const char *str);
+
+void show_header(void);
+
 void menu_move(enum MENU_ACT d);
 
 /* util */
 
 /* input */
-void input_handle(void);
+enum MENU_ACT input_command(void);
 
-char start_ibuf(void);
-void append_ibuf(char c);
-void drop_ibuf(void);
+char start_b(void);
+int len_b(void);
+int append_b(char c);
+void drop_b(void);
 
 #endif

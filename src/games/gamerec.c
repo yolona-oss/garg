@@ -3,6 +3,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <libgen.h>
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
 
 #include "../utils/util.h"
 #include "../utils/eprintf.h"
@@ -10,6 +16,8 @@
 
 /* vars */
 extern game_tab_t gr_tab;
+
+pid_t g_game_pid;
 
 int
 run_game(int id)
@@ -19,8 +27,58 @@ run_game(int id)
 
 	esnprintf(run, sizeof(run), "/.%s", path);
 
-	/* add_str_status_buf(run); */
-	execvp(run, NULL);
+	switch (g_game_pid = fork()) {
+		case 0:
+		setsid();
+
+		int devnull = open("/dev/devnull", O_WRONLY);
+		if (!devnull) {
+			/* status text handler TODO */
+			break;
+		}
+		dup2(devnull, 0);
+		dup2(devnull, 1);
+		dup2(devnull, 2);
+
+		char *argv[4];
+		argv[0] = basename(run);
+		argv[1] = NULL;
+
+		execvp(run, argv);
+
+		exit(EXIT_SUCCESS);
+		break;
+
+		default:
+		;
+		int status = 0;
+		pid_t wpid;
+
+		do {
+			wpid = waitpid(g_game_pid, &status, WUNTRACED);
+
+			if (wpid == -1) {
+				warn("waitpid: ");
+				// show tui message
+				break;
+			}
+
+			if (WIFEXITED(status)) {
+				if (WEXITSTATUS(status)) {
+					// show tui message
+				}
+			} else {
+				//TODO
+			}
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+
+		break;
+
+		case -1:
+		//log error TODO
+		exit(EXIT_FAILURE);
+		break;
+	}
 
 	return 0;
 }
@@ -111,7 +169,7 @@ gr_print(game_t *Game)
 	}
 }
 
-int
+static int
 gr_get_props(game_t *grp, game_prop_t prop)
 {
 	if (!grp) {
@@ -145,7 +203,7 @@ gr_get_props(game_t *grp, game_prop_t prop)
 	return 0;
 }
 
-void
+static void
 gr_set_props(game_t *grp, game_prop_t *prop)
 {
 	grp->properties.icon = prop->icon;
@@ -155,12 +213,12 @@ gr_set_props(game_t *grp, game_prop_t *prop)
 }
 
 void
-check_gr_tab(game_tab_t tab)
+check_gr_tab()
 {
 	game_prop_t prop;
-	for (int i = 0; i < tab.ngames; i++) {
-		gr_get_props(&tab.game_rec[i], prop);
-		gr_set_props(&tab.game_rec[i], &prop);
+	for (int i = 0; i < gr_tab.ngames; i++) {
+		gr_get_props(&gr_tab.game_rec[i], prop);
+		gr_set_props(&gr_tab.game_rec[i], &prop);
 	}
 }
 
