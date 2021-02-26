@@ -1,11 +1,21 @@
+#include <ctype.h>
+
 #include "tui.h"
 
 #define I_BUF_MAX 24
 
+/* vars */
 static char i_buf[I_BUF_MAX+1] = {0};
+static int  i_count_buf = 0;
+
+/* funcs */
+static char start_b(void);
+static int  len_b(void);
+static int  append_b(char c);
+static void drop_b(void);
 
 /* returns index of last char in i_buf */
-int
+static int
 len_b(void)
 {
 	int i = 0;
@@ -15,7 +25,7 @@ len_b(void)
 }
 
 /* returns first char in i_buf */
-char
+static char
 start_b(void)
 {
 	return i_buf[0];
@@ -24,20 +34,20 @@ start_b(void)
 /* appending i_buf if can.
  * and return 0 if can,
  * otherwise 1 */
-int
+static int
 append_b(char c)
 {
 	int len = len_b();
-	/* if (len < I_BUF_MAX) { */
+	if (len < I_BUF_MAX) {
 		i_buf[len-1] = c;
 		i_buf[len] = '\0';
 		return 0;
-	/* } */
+	}
 
-	/* return 1; */
+	return 1;
 }
 
-void
+static void
 drop_b(void)
 {
 	i_buf[0] = '\0';
@@ -50,6 +60,10 @@ input_command(void)
 	int key;
 
 	if ((key = getch()) != ERR) {
+		if (isdigit(key)) {
+			i_count_buf++;
+		}
+
 		switch (key)
 		{
 			/* single */
@@ -67,9 +81,6 @@ input_command(void)
 				break;
 			case CTRL('b'):
 				action = M_UPAGE;
-				break;
-			case 'G':
-				action = M_LAST;
 				break;
 
 			case 'q':
@@ -89,6 +100,14 @@ input_command(void)
 					drop_b();
 				}
 				break;
+			case 'G':
+				action = M_LAST;
+				break;
+		}
+
+		add_str_status_buf(2, i_buf);
+		if (action != NOTHING) {
+			i_count_buf = 0;
 		}
 	}
 

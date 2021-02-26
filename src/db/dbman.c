@@ -38,6 +38,7 @@ db_init(void)
 
 	char *crg = "CREATE TABLE IF NOT EXISTS Games( \
 	 		id INT, \
+			last_time, \
 	 		play_time INT, \
 	 		name TEXT, \
 	 		icon TEXT, \
@@ -76,7 +77,7 @@ db_init(void)
 }
 
 int
-cache_get_length(sqlite3 *db)
+db_length(sqlite3 *db)
 {
 	return sqlite3_last_insert_rowid(db);
 }

@@ -28,8 +28,8 @@ pre(void)
 	signal(SIGWINCH, resizeHandler);
 
 	/* events */
-	setup_event(TIMER, check_timer);
-	setup_event(INPUT, check_input);
+	event_action(TIMER, check_timer);
+	event_action(INPUT, check_input);
 
 	init_tui();
 
@@ -41,7 +41,6 @@ pre(void)
 		scan(g_user_path);
 	}
 
-	check_gr_tab();
 	init_game_menu();
 
 	return 0;
@@ -50,8 +49,6 @@ pre(void)
 static int
 post(void)
 {
-	destroy_game_menu();
-
 	destroy_tui();
 
 	return 0;
@@ -66,7 +63,7 @@ run()
 	}
 	
 	struct timespec start, wait;
-	enum EVENT event;
+	enum EVENT_ID event;
 
 	setup_timer(M_SEC(4));
 

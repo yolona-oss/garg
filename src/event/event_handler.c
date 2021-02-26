@@ -1,7 +1,7 @@
 #include <time.h>
+#include <ncurses.h>
 
 #include "garg_event.h"
-#include "../tui/tui.h"
 #include "../utils/eprintf.h"
 #include "../utils/garg_time.h"
 
@@ -50,6 +50,12 @@ check_input()
 	char ch;
 	if ((ch = getch()) != ERR) {
 		ungetch(ch);
+
+		/* char str[2]; */
+		/* str[0] = ch; */
+		/* str[1] = '\0'; */
+
+		/* add_event_buf(INPUT, str); */
 		up_event(INPUT);
 		return 1;
 	}

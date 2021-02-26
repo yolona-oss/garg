@@ -6,11 +6,13 @@
 
 #define __zero(P) memset((void *)(P), 0, sizeof(*P))
 
-/* #define DIG(n)           (int)round(log10(n+0.5)) */
-/* #define INT_MAX_DIG      (int)DIG(INT_MAX) */
-/* #define UINT_MAX_DIG     (int)DIG(UINT_MAX) */
-#define INT_MAX_DIG      (int)round(log10(INT_MAX + 0.5))
-#define UINT_MAX_DIG     (int)round(log10(UINT_MAX + 0.5))
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+#define DIG(n)           (int)round(log10(n+0.5))
+#define INT_MAX_DIG      (int)DIG(INT_MAX)
+#define UINT_MAX_DIG     (int)DIG(UINT_MAX)
+/* #define INT_MAX_DIG      (int)round(log10(INT_MAX + 0.5)) */
+/* #define UINT_MAX_DIG     (int)round(log10(UINT_MAX + 0.5)) */
 
 #define PERC_OF(n, p) n*p/100
 #define IS_ODD(n) (((int)n/2)-((int)n/2))
@@ -49,6 +51,7 @@ int isUninstaller(const char *file_path, const char *null);
 char *bprintf(const char *fmt, ...);
 
 char *itoa(int n, int base);
+int ctocp(char c, char *ret);
 
 int getCountsOfDigits(int n);
 

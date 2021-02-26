@@ -19,6 +19,12 @@ extern game_tab_t gr_tab;
 
 pid_t g_game_pid;
 
+/* funcs */
+static unsigned int gr_make_id(const char *);
+
+static void gr_set_props(game_t *grp, game_prop_t prop);
+static game_prop_t gr_get_props(game_t *grp);
+
 int
 run_game(int id)
 {
@@ -86,9 +92,6 @@ run_game(int id)
 void
 grp_free(game_t *grp)
 {
-	grp->id = -1707;
-	grp->play_time = -1;
-
 	free(grp->name);
 	free(grp->location);
 	free(grp->start_point);
@@ -153,7 +156,7 @@ gr_print(game_t *Game)
 	if (Game) {
 		printf("\n##########################################\n");
 		printf(" id          - %d\n", Game->id);
-		printf(" play time   - %d\n", Game->play_time);
+		printf(" play time   - %d\n", Game->play_time.tm_min);
 		printf(" name        - %s\n", Game->name);
 		printf(" icon        - %s\n", Game->icon);
 		printf(" gener       - %s\n", Game->gener);
@@ -169,11 +172,12 @@ gr_print(game_t *Game)
 	}
 }
 
-static int
-gr_get_props(game_t *grp, game_prop_t prop)
+static game_prop_t
+gr_get_props(game_t *grp)
 {
+	game_prop_t prop;
 	if (!grp) {
-		return -1;
+		return prop;
 	} 
 
 	if (!isExist(grp->location)) {
@@ -200,16 +204,16 @@ gr_get_props(game_t *grp, game_prop_t prop)
 		prop.icon = 0;
 	}
 
-	return 0;
+	return prop;
 }
 
 static void
-gr_set_props(game_t *grp, game_prop_t *prop)
+gr_set_props(game_t *grp, game_prop_t prop)
 {
-	grp->properties.icon = prop->icon;
-	grp->properties.location = prop->location;
-	grp->properties.start_point = prop->start_point;
-	grp->properties.uninstaller = prop->uninstaller;
+	grp->properties.icon = prop.icon;
+	grp->properties.location = prop.location;
+	grp->properties.start_point = prop.start_point;
+	grp->properties.uninstaller = prop.uninstaller;
 }
 
 void
@@ -217,12 +221,12 @@ check_gr_tab()
 {
 	game_prop_t prop;
 	for (int i = 0; i < gr_tab.ngames; i++) {
-		gr_get_props(&gr_tab.game_rec[i], prop);
-		gr_set_props(&gr_tab.game_rec[i], &prop);
+		prop = gr_get_props(&gr_tab.game_rec[i]);
+		gr_set_props(&gr_tab.game_rec[i], prop);
 	}
 }
 
-unsigned int
+static unsigned int
 gr_make_id(const char *str)
 {
 	unsigned int ret = 0;
@@ -246,7 +250,9 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 	game_t *grp = (game_t *)ecalloc(1, sizeof*grp);
 
 	grp->id        = gr_make_id(name);
-	grp->play_time = 0;
+
+	grp->play_time.tm_min = 0;
+	grp->last_time.tm_sec = -1;
 
 	grp->name        = estrdup(name);
 	grp->location    = estrdup(location);
@@ -265,6 +271,10 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 		warn("cant GR INIT!");
 		return NULL;
 	}
+	
+	game_prop_t prop;
+	prop = gr_get_props(grp);
+	gr_set_props(grp, prop);
 
 	return grp;
 }
@@ -303,7 +313,6 @@ gr_add(game_t *newrec)
 	return gr_tab.ngames++;
 }
 
-/* TODO */
 int
 gr_delete(int id)
 {
@@ -410,7 +419,7 @@ grdup(game_t *gr)
 	}
 
 	dup->id = gr->id;
-	dup->id = gr->play_time;
+	dup->play_time = gr->play_time;
 	dup->location = estrdup(gr->location);
 	dup->name = estrdup(gr->name);
 	dup->start_point = estrdup(gr->start_point);

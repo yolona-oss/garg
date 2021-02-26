@@ -1,42 +1,47 @@
 #include <stdio.h>
 
 #include "garg_event.h"
+#include "../utils/eprintf.h"
 
-static event_t event_list[N_EVENTS];
+/* vars */
+static event_t event[N_EVENTS];
+
+/* funcs */
+static void close_event(enum EVENT_ID eid);
+
+/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 
 void
-setup_event(enum EVENT e, int (*func)(void))
+event_action(enum EVENT_ID eid, int (*func)(void))
 {
-	event_list[e].func = func;
+	event[eid].func = func;
 }
 
 void
-do_event_func(enum EVENT e)
+up_event(enum EVENT_ID eid)
 {
-	event_list[e].func();
+	event[eid].flag = 1;
 }
 
 void
-up_event(int en)
+add_event_buf(enum EVENT_ID eid, const char *s)
 {
-	event_list[en].flag = 1;
+	esnprintf(event[eid].buf, sizeof(event[eid].buf), "%s", s);
 }
 
-void
-close_event(int en)
+static void
+close_event(enum EVENT_ID eid)
 {
-	event_list[en].flag = 0;
+	event[eid].flag = 0;
 }
 
 int
-pull_event()
+pull_event(void)
 {
 	int i;
-	check_timer();
 	for (i = 0; i < N_EVENTS; i++) {
-		event_list[i].func();
-
-		if (event_list[i].flag == 1) {
+		event[i].func();
+		if (event[i].flag == 1) {
 			close_event(i);
 			return i;
 		}

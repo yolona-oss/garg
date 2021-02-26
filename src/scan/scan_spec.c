@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "util.h"
+#include "../utils/util.h"
 #include "scan.h"
 
 char *

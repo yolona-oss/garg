@@ -3,7 +3,7 @@
 
 #define N_EVENTS 2
 
-enum EVENT {
+enum EVENT_ID {
 	TIMER = 0,
 	INPUT,
 };
@@ -11,25 +11,24 @@ enum EVENT {
 typedef struct event_t event_t;
 struct event_t {
 	int flag;
+	char buf[1025];
 	int (*func)(void);
 };
 
 /* vars */
 
 /* funcs */
-void setup_event(enum EVENT e, int (*func)(void));
-void do_event_func(enum EVENT e);
+void event_action(enum EVENT_ID eid, int (*func)(void));
+void up_event(enum EVENT_ID eid);
+void add_event_buf(enum EVENT_ID eid, const char *s);
 
-void up_event(int event);
-void close_event(int event);
-
-int pull_event();
+int pull_event(void);
 
 /* handlers */
 void setup_timer(unsigned int interval_ms);
 void drop_timer(void);
 int check_timer(void);
 
-int check_input();
+int check_input(void);
 
 #endif

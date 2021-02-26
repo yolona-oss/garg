@@ -306,6 +306,19 @@ itoa(int val, int base)
 }
 
 int
+ctocp(char c, char *ret)
+{
+	if (sizeof(ret) < 2) {
+		return -1;
+	}
+
+	ret[0] = c;
+	ret[1] = '\0';
+
+	return 0;
+}
+
+int
 getCountsOfDigits(int n) {
 	if (n < 100000) {
 		if (n < 100) {

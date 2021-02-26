@@ -67,8 +67,7 @@ main(int argc, char **argv)
 	g_qflag = 0;
 	g_dflag = 0;
 
-	char ch = 0;
-	int val = 0;
+	char ch;
 
 	struct option long_options[] = {
 		{ "db",     required_argument, NULL, 'c' },
@@ -81,19 +80,21 @@ main(int argc, char **argv)
 
 	while ((ch = getopt_long(argc, argv, "s:c:qdh", long_options, NULL)) != -1) {
 		switch (ch) {
-			case 'c':
+			case 'c': /* using db path */
 				strcpy(g_user_db, optarg);
 				break;
-			case 'q':
+			case 'q': /* quiet mode */
 				g_qflag = 1;
 				break;
-			case 'd':
+			case 'd': /* debug mode */
 				g_dflag = 1;
 				break;
-			case 's':
+			case 's': /* scan path */
 				strcpy(g_user_path, optarg);
 				break;
-			case 'p':
+			case 'p': /* setting recursion level in scan */
+				;
+				int val;
 				if ((val=atoi(optarg))) {
 					if (val > 5) {
 						printf("Scanning can take a long time\n");
@@ -103,11 +104,11 @@ main(int argc, char **argv)
 					warn("Dissatisfy value: %s", optarg);
 				}
 				break;
+
 			case 'h':
 				usage();
 				break;
-			case '?':
-				usage();
+
 			default:
 				usage();
 				/* TODO */

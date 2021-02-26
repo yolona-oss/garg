@@ -21,7 +21,7 @@
 /*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 
 /* vars */
-char status_buf[MAX_STATUS_BUF] = {0};
+static char status_buf[3][MAX_STATUS_BUF] = {0};
 
 static int COLUMNS, ROWS;
 
@@ -145,6 +145,8 @@ init_tui()
 void
 destroy_tui()
 {
+	destroy_game_menu();
+
 	curs_set(1);
 	echo();
 
@@ -177,6 +179,7 @@ init_game_menu()
 	set_menu_format(g_menu_list, h-1, 0);
 	set_menu_mark(g_menu_list, "");
 
+	/* menu title */
 	mvwprintw(w_game_list, 0, 0, "TITLE MENU");
 	refresh();
 
@@ -210,20 +213,31 @@ show_header()
 void
 show_status_bar()
 {
+	int lf, cf, rf;
+	char bar[COLUMNS+1];
+	lf = strlen(status_buf[0]);
+	cf = strlen(status_buf[1]);
+	rf = strlen(status_buf[2]);
+
+	memset(bar, '#', COLUMNS);
+	memset(&bar[ROWS/3], '2', COLUMNS/3);
+	memset(&bar[ROWS/3*2], '$', COLUMNS/3*2);
+
+	/* memmove(bar, status_buf[0], lf); */
+
 	wmove(w_status_bar, 0, 0);
 	wclrtobot(w_status_bar);
-
-	wprintw(w_status_bar, "gamesc: %d; cur: %d, cur_gid: %s, h:%d, w:%d, buf: %s",
-			gr_tab.ngames, item_index(current_item(g_menu_list))+1, item_description(current_item(g_menu_list)), ROWS, COLUMNS,
-			status_buf);
+	wprintw(w_status_bar, "%s", bar);
+	/* wprintw(w_status_bar, "overall games: %d\t%s %s %s", gr_tab.ngames, */
+	/* 		status_buf[0], status_buf[1], status_buf[2]); */
 
 	wnoutrefresh(w_status_bar);
 }
 
 void
-add_str_status_buf(const char *str)
+add_str_status_buf(int pos, const char *str)
 {
-	esnprintf(status_buf, sizeof(status_buf), "%s", str);
+	esnprintf(status_buf[pos], sizeof(status_buf), "%s", str);
 }
 
 void
@@ -257,13 +271,10 @@ menu_move(enum MENU_ACT a)
 			int id = grt_ind(atoi(item_description(current_item(g_menu_list))));
 			run_game(id);
 			break;
+		case EXPAND:
+			break;
 
 		/* addition functionality */
-		case BACK:
-			break;
-
-		case NOTHING:
-			break;
 	}
 
 	wnoutrefresh(w_game_list);

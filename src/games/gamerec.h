@@ -1,6 +1,8 @@
 #ifndef _GAMEREC_H_
 #define _GAMEREC_H_
 
+#include <time.h>
+
 /* structs */
 typedef struct Game_rec game_t;
 typedef struct Gr_tab game_tab_t;
@@ -15,7 +17,8 @@ struct Gr_prop {
 
 struct Game_rec {
 	unsigned short id;      /* necessary */
-	unsigned int play_time; /* in minutes */
+	struct tm play_time;    /* necessary */ /* a total of time playing */
+	struct tm last_time;    /* necessary */ /* last launch time */
 	char *name;             /* necessary */
 	char *icon;
 	char *gener;
@@ -23,7 +26,7 @@ struct Game_rec {
 	char *start_point;      /* necessary */
 	char *start_argv;
 	char *uninstaller;
-	struct Gr_prop properties;
+	struct Gr_prop properties; /* necessary */
 };
 
 struct Gr_tab {
@@ -43,7 +46,7 @@ void grt_free(game_tab_t Game);
 
 void gr_print(game_t *Game);
 
-void check_gr_tab();
+void check_gr_tab(void);
 
 game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller);
 void gr_edit(game_t *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
@@ -55,6 +58,7 @@ int gr_is_dup(game_t rec);
 
 int grt_ind(int id);
 
+/* utils */
 int grcmp(game_t src, game_t dst);
 game_t *grcpy(game_t *dst, game_t *src);
 game_t *grdup(game_t *rec);

@@ -26,6 +26,7 @@ db_put_rec(sqlite3 *db, game_t *grp)
 	//TODO Try trancactions
 	sqlite3_stmt *res;
 	int rc;
+	//ADD LAST TIME TODO
 	const char *sql_req = "INSERT INTO \
 		Games(\
 		id, \
@@ -44,7 +45,7 @@ db_put_rec(sqlite3 *db, game_t *grp)
 
 	if (rc == SQLITE_OK) {
 		sqlite3_bind_int(res, 1, grp->id);
-		sqlite3_bind_int(res, 2, grp->play_time);
+		sqlite3_bind_int(res, 2, grp->play_time.tm_min); //TODO
 		sqlite3_bind_text(res, 3, grp->name, strlen(grp->name), NULL);
 
 		if (grp->icon)  sqlite3_bind_text(res, 4, grp->icon, strlen(grp->icon), NULL);
@@ -111,7 +112,8 @@ db_read_cached_recs()
 		/* id, pt, name, icon, gener, loc, sp, sarg, uninst */
 		while (sqlite3_step(res) == SQLITE_ROW) {
 			grp->id        = sqlite3_column_int(res, 0);
-			grp->play_time = sqlite3_column_int(res, 1);
+			/* grp->last_time.tm_min = */ //TODO
+			grp->play_time.tm_min = sqlite3_column_int(res, 1);
 			grp->name = estrdup((const char*)sqlite3_column_text(res, 2));
 
 			tmp = (char *)sqlite3_column_text(res, 3);
