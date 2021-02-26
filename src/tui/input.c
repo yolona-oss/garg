@@ -62,53 +62,55 @@ input_command(void)
 	if ((key = getch()) != ERR) {
 		if (isdigit(key)) {
 			i_count_buf++;
-		}
+		} else {
 
-		switch (key)
-		{
-			/* single */
-			case 'k':
-				action = M_UP;
-				break;
-			case 'j':
-				action = M_DOWN;
-				break;
-			case 'l':
-				action = SELECT;
-				break;
-			case CTRL('f'):
-				action = M_DPAGE;
-				break;
-			case CTRL('b'):
-				action = M_UPAGE;
-				break;
+			switch (key)
+			{
+				/* single */
+				case 'k':
+					action = M_UP;
+					break;
+				case 'j':
+					action = M_DOWN;
+					break;
+				case 'l':
+					action = SELECT;
+					break;
+				case CTRL('f'):
+					action = M_DPAGE;
+					break;
+				case CTRL('b'):
+					action = M_UPAGE;
+					break;
 
-			case 'q':
-				done = 1;
-				break;
+				case 'q':
+					done = 1;
+					break;
 
-			/* sequences */
-			case 'g':
-				;
-				int len = len_b();
-				if (len == 1) {
-					append_b('g');
-				} else if (len == 2) {
-					if (start_b() == 'g') {
-						action = M_FIRST;
+				/* sequences */
+				case 'g':
+					;
+					int len = len_b();
+					if (len == 1) {
+						append_b('g');
+					} else if (len == 2) {
+						if (start_b() == 'g') {
+							action = M_FIRST;
+						}
+						drop_b();
 					}
-					drop_b();
-				}
-				break;
-			case 'G':
-				action = M_LAST;
-				break;
+					break;
+				case 'G':
+					action = M_LAST;
+					break;
+			}
+
+			if (action != NOTHING) {
+				i_count_buf = 0;
+			}
 		}
 
 		add_str_status_buf(2, i_buf);
-		if (action != NOTHING) {
-			i_count_buf = 0;
-		}
 	}
 
 	return action;

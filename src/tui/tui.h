@@ -23,8 +23,6 @@ enum MENU_ACT {
 	SELECT,
 	EXPAND,
 
-	COUNTING,
-
 	NOTHING,
 };
 
