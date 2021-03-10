@@ -16,8 +16,10 @@ TUI game orginizer.
 <a name="dev"></a>
 ## In development capabilities
 - [ ] TUI
+	- [ ] Resizing capability
 - [ ] Advanced search mechanisms
 	- [ ] Built-in specic searcher
+- [ ] Event system
 
 ## TODO
 - 

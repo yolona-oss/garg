@@ -289,20 +289,20 @@ bprintf(const char *fmt, ...)
 	int ret;
 
 	va_start(ap, fmt);
-	ret = evsnprintf(buf, sizeof(buf), fmt, ap);
+	ret = evsnprintf(g_buf, sizeof(g_buf), fmt, ap);
 	va_end(ap);
 
-	return (ret < 0) ? NULL : buf;
+	return (ret < 0) ? NULL : g_buf;
 }
 
 char *
 itoa(int val, int base)
 {
-	static char buf[32] = {0};
+	char buf[32] = {0};
 	int i = 30;
 	for(; val && i ; --i, val /= base)
 		buf[i] = "0123456789abcdef"[val % base];
-	return &buf[i+1];
+	return bprintf("%s", &buf[i+1]);
 }
 
 int
@@ -356,5 +356,27 @@ getCountsOfDigits(int n) {
 				}
 			}
 		}
+	}
+}
+
+void
+swap(void *s, void *d, size_t size)
+{
+	unsigned char *p = s, *q = d, tmp;
+	for (size_t i = 0; i != size; i++)
+	{
+		tmp  = p[i];
+		p[i] = q[i];
+		q[i] = tmp;
+	}
+}
+
+void
+shift_pp(void **pp, int i, int j, size_t size)
+{
+	while (i < j)
+	{
+		swap(pp+(i), pp+((i+1)), size);
+		i++;
 	}
 }

@@ -17,7 +17,7 @@ extern game_tab_t gr_tab;
 extern char g_user_db[PATH_MAX];
 
 /* funcs */
-int     db_rm_rec(sqlite3 *db, int n);
+int     db_rm_game(int id);
 game_t *db_get_rec(const char *path, int n);
 int     db_put_rec(sqlite3 *db, game_t *GE);
 

@@ -139,7 +139,7 @@ char
 	char *p = strdup(str);
 
 	if (!p) {
-		warn("Cant duplicate string \"%s\"", str);
+		die("Cant duplicate string \"%s\"", str);
 		return NULL;
 	}
 

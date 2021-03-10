@@ -10,8 +10,9 @@ enum EVENT_ID {
 
 typedef struct event_t event_t;
 struct event_t {
-	int flag;
+	enum EVENT_ID type;
 	char buf[1025];
+	char key;
 	int (*func)(void);
 };
 
@@ -20,13 +21,14 @@ struct event_t {
 /* funcs */
 void event_action(enum EVENT_ID eid, int (*func)(void));
 void up_event(enum EVENT_ID eid);
+
+void add_event_key(enum EVENT_ID eid, const char key);
 void add_event_buf(enum EVENT_ID eid, const char *s);
 
-int pull_event(void);
+int poll_event(event_t *e);
 
 /* handlers */
 void setup_timer(unsigned int interval_ms);
-void drop_timer(void);
 int check_timer(void);
 
 int check_input(void);

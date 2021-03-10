@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdlib.h>
 
 #include "../main.h"
 #include "../games/gamerec.h"
@@ -54,6 +55,7 @@ post(void)
 	return 0;
 }
 
+#include "../utils/util.h"
 int
 run()
 {
@@ -63,7 +65,8 @@ run()
 	}
 	
 	struct timespec start, wait;
-	enum EVENT_ID event;
+	event_t event;
+	aval_t *av;
 
 	setup_timer(M_SEC(4));
 
@@ -74,14 +77,16 @@ run()
 		show_status_bar();
 
 		/* EVENT HENDLING */
-		while ((event=pull_event()) != -1) {
-			switch (event)
+		while (poll_event(&event) != -1) {
+			switch (event.type)
 			{
 				case TIMER:
 					check_gr_tab();
 					break;
 				case INPUT:
-					menu_move(input_command());
+					av = key_to_action(event.key);
+					menu_move(*av);
+					free(av);
 					break;
 
 				default:

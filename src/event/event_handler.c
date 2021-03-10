@@ -21,13 +21,6 @@ update_timer()
 	g_timer = now();
 }
 
-void
-drop_timer()
-{
-	g_timer.tv_nsec = -1;
-	g_timer.tv_sec = -1;
-}
-
 /* return 1 if time passed 
  * and raising TIMER event flag */
 int
@@ -49,13 +42,7 @@ check_input()
 {
 	char ch;
 	if ((ch = getch()) != ERR) {
-		ungetch(ch);
-
-		/* char str[2]; */
-		/* str[0] = ch; */
-		/* str[1] = '\0'; */
-
-		/* add_event_buf(INPUT, str); */
+		add_event_key(INPUT, ch);
 		up_event(INPUT);
 		return 1;
 	}

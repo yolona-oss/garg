@@ -11,8 +11,6 @@
 #define DIG(n)           (int)round(log10(n+0.5))
 #define INT_MAX_DIG      (int)DIG(INT_MAX)
 #define UINT_MAX_DIG     (int)DIG(UINT_MAX)
-/* #define INT_MAX_DIG      (int)round(log10(INT_MAX + 0.5)) */
-/* #define UINT_MAX_DIG     (int)round(log10(UINT_MAX + 0.5)) */
 
 #define PERC_OF(n, p) n*p/100
 #define IS_ODD(n) (((int)n/2)-((int)n/2))
@@ -20,7 +18,7 @@
 #include "list.h"
 
 //vars
-extern char buf[4096];
+extern char g_buf[4096];
 
 extern char *argv0;
 extern int g_qflag, g_dflag;
@@ -54,5 +52,8 @@ char *itoa(int n, int base);
 int ctocp(char c, char *ret);
 
 int getCountsOfDigits(int n);
+
+void swap(void *src, void *dst, size_t size);
+void shift_pp(void **pp, int i, int j, size_t size);
 
 #endif

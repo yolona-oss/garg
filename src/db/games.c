@@ -43,7 +43,8 @@ db_put_rec(sqlite3 *db, game_t *grp)
 
 	rc = sqlite3_prepare_v2(db, sql_req, -1, &res, 0);
 
-	if (rc == SQLITE_OK) {
+	if (rc == SQLITE_OK)
+	{
 		sqlite3_bind_int(res, 1, grp->id);
 		sqlite3_bind_int(res, 2, grp->play_time.tm_min); //TODO
 		sqlite3_bind_text(res, 3, grp->name, strlen(grp->name), NULL);
@@ -56,33 +57,36 @@ db_put_rec(sqlite3 *db, game_t *grp)
 
 		if (grp->start_argv)  sqlite3_bind_text(res, 8, grp->start_argv, strlen(grp->start_argv), NULL);
 		if (grp->uninstaller) sqlite3_bind_text(res, 9, grp->uninstaller, strlen(grp->uninstaller), NULL);
+
+
+		sqlite3_step(res);
+		sqlite3_finalize(res);
 	} else {
 		warn("Failed to execute statement: %s", sqlite3_errmsg(db));
 	}
 
-	sqlite3_step(res);
-	sqlite3_finalize(res);
-
-	return 0;
+	return rc;
 }
 
 /* Delete game record with pushed id */
 int
-db_rm_rec(sqlite3 *db, int id)
+db_rm_game(int id)
 {
-	char *err_msg = 0;
-	int len = 29 + UINT_MAX_DIG;
-	char sql_req[10];
+	sqlite3 *db = db_init();
+	sqlite3_stmt *statement;
+	char *sql_req = "DELETE FROM Games WHERE id = ?";
 
-	esnprintf(sql_req, len, "DELETE FROM Games WHERE id = %d", id);
+	int rc = sqlite3_prepare_v2(db, sql_req, -1, &statement, 0);
 
-	int rc = sqlite3_exec(db, sql_req, 0, 0, &err_msg);
-	
-	if (rc != SQLITE_OK) {
-		warn("SQL error: %s", err_msg);
-		sqlite3_free(err_msg);
-		return -1;
+	if (rc == SQLITE_OK) {
+		sqlite3_bind_int(statement, 1, id);
+		sqlite3_step(statement);
+		sqlite3_finalize(statement);
+	} else {
+		warn("Failed to execute statement: %s", sqlite3_errmsg(db));
 	}
+
+	sqlite3_close(db);
 
 	return rc;
 }
@@ -105,8 +109,7 @@ db_read_cached_recs()
 
 	if (rc == SQLITE_OK) {
 		char *tmp;
-		game_t *grp;
-		grp = (game_t *)ecalloc(1, sizeof*grp);
+		game_t *grp = (game_t *)ecalloc(1, sizeof*grp);
 
 		/*  0,  1,    2,    3,     4,   5,  6,    7,      8 */
 		/* id, pt, name, icon, gener, loc, sp, sarg, uninst */

@@ -18,7 +18,9 @@ SOURCES    = src/main.c \
 			 src/utils/time.c \
 			 src/db/dbman.c src/db/settings.c src/db/games.c \
 			 src/event/event.c src/event/event_handler.c \
-			 src/tui/tui.c src/tui/util.c src/tui/input.c
+			 src/tui/tui.c src/tui/util.c \
+			 src/tui/input/input.c src/tui/input/parcer.c \
+			 src/tui/menu.c
 OBJECTS    = $(SOURCES:.c=.o)
 EXECUTABLE = garg
 

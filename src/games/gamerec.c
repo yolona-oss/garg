@@ -37,14 +37,13 @@ run_game(int id)
 		case 0:
 		setsid();
 
-		int devnull = open("/dev/devnull", O_WRONLY);
-		if (!devnull) {
-			/* status text handler TODO */
-			break;
-		}
-		dup2(devnull, 0);
-		dup2(devnull, 1);
-		dup2(devnull, 2);
+		/* int devnull = open("/dev/devnull", O_WRONLY); */
+		/* if (!devnull) { */
+		/* 	/1* status text handler TODO *1/ */
+		/* 	break; */
+		/* } */
+		/* dup2(devnull, 1); */
+		/* dup2(devnull, 2); */
 
 		char *argv[4];
 		argv[0] = basename(run);
@@ -330,19 +329,6 @@ gr_delete(int id)
 	return 0;
 }
 
-game_t *
-gr_find(int id)
-{
-	int i;
-	for (i = 0; i < gr_tab.ngames; i++) {
-		if (gr_tab.game_rec[i].id == id) {
-			return &gr_tab.game_rec[i];
-		}
-	}
-
-	return NULL;
-}
-
 int
 gr_is_dup(game_t game)
 {
@@ -357,17 +343,23 @@ gr_is_dup(game_t game)
 	return 0;
 }
 
-int
-grt_ind(int id)
+game_t *
+grt_find(int id)
 {
 	int i;
 	for (i = 0; i < gr_tab.ngames; i++) {
 		if (gr_tab.game_rec[i].id == id) {
-			return i;
+			return &gr_tab.game_rec[i];
 		}
 	}
 
-	return -1;
+	return NULL;
+}
+
+int
+gr_id(game_t *gr)
+{
+	return gr->id;
 }
 
 int

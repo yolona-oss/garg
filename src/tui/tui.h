@@ -7,9 +7,10 @@
 #define MAX_STATUS_BUF 4096
 
 #define CENTER(s, d) (s-d)/2
-#define RIGHT(s, d) (s-d)
+#define RIGHT(s, d)  (s-d)
 
 #define CTRL(k) (k & 0x1F)
+#define KEY_ESC 0x1b
 
 enum MENU_ACT {
 	M_UP,
@@ -20,10 +21,20 @@ enum MENU_ACT {
 	M_FIRST,
 	M_LAST,
 
-	SELECT,
-	EXPAND,
+	SELECT_ITEM,
+	ITEM_INFO_TOGGLE,
+	FIND_ITEM,
+	EDIT_ITEM,
+	DELETE_ITEM,
 
+	ESC,
 	NOTHING,
+};
+
+typedef struct aval_t aval_t;
+struct aval_t {
+	enum MENU_ACT action;
+	int val;
 };
 
 /* vars */
@@ -42,11 +53,11 @@ void show_status_bar(void);
 void add_str_status_buf(int pos, const char *str);
 void show_header(void);
 
-void menu_move(enum MENU_ACT d);
+void menu_move(aval_t aval);
 
 /* util */
 
 /* input */
-enum MENU_ACT input_command(void);
+aval_t *key_to_action(const char key);
 
 #endif

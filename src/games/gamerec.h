@@ -52,11 +52,11 @@ game_t *gr_init(const char *name, const char *location, const char *sp, const ch
 void gr_edit(game_t *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
 
 int gr_add(game_t *newrec);
-game_t *gr_find(int id);
 int gr_delete(int id);
 int gr_is_dup(game_t rec);
+game_t *grt_find(int id);
 
-int grt_ind(int id);
+int gr_id(game_t *gr);
 
 /* utils */
 int grcmp(game_t src, game_t dst);

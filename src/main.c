@@ -6,6 +6,9 @@
 #include <getopt.h>
 #include <ctype.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "main.h"
 #include "run/run.h"
 #include "utils/util.h"
@@ -14,7 +17,7 @@
 #include "games/gamerec.h"
 
 /* vars */
-char buf[4096];
+char g_buf[4096];
 
 int done = 0;
 
@@ -114,6 +117,12 @@ main(int argc, char **argv)
 				/* TODO */
 				break;
 		}
+	}
+
+	/* redirect errors msg to log file */
+	int logf    = open("log", O_WRONLY);
+	if (logf) {
+		dup2(logf, 2);
 	}
 
 	int rc = run();
