@@ -19,10 +19,10 @@
 static const unsigned int g_main_interval = M_SEC(1/_FPS);
 
 /* funcs */
-static int pre(void);
-static int post(void);
+static menu_t *pre(void);
+static int post(menu_t *menu);
 
-static int
+static menu_t * 
 pre(void)
 {
 	/* setupping resize handler */
@@ -42,15 +42,14 @@ pre(void)
 		scan(g_user_path);
 	}
 
-	init_game_menu();
-
-	return 0;
+	return init_game_menu();
 }
 
 static int
-post(void)
+post(menu_t *menu)
 {
 	destroy_tui();
+	destroy_game_menu(menu);
 
 	return 0;
 }
@@ -59,11 +58,8 @@ post(void)
 int
 run()
 {
-	if ( pre() ) {
-		warn("Cant pre initiate run");
-		return 1;
-	}
-	
+	menu_t *menu = pre();
+
 	struct timespec start, wait;
 	event_t event;
 	aval_t *av;
@@ -85,7 +81,7 @@ run()
 					break;
 				case INPUT:
 					av = key_to_action(event.key);
-					menu_move(*av);
+					menu_move(menu, *av);
 					free(av);
 					break;
 
@@ -103,7 +99,7 @@ run()
 		}
 	}
 
-	post();
+	post(menu);
 
 	return 0;
 }

@@ -4,6 +4,14 @@
 #include "menu.h"
 
 static int save_menu_position(menu_t *menu);
+static void draw_menu(menu_t *menu);
+
+static int
+save_menu_position(menu_t *menu)
+{
+
+	return 0;
+}
 
 item_t *
 new_item(char *name, int val)
@@ -58,17 +66,15 @@ menu_t *
 new_menu(item_t **items)
 {
 	int x, y;
-	menu_t *menu;
+	menu_t *menu = (menu_t *)ecalloc(1, sizeof*menu);
 
 	getmaxyx(stdscr, y, x);
-	menu = (menu_t *)emalloc(sizeof*menu);
+	
 	menu->main_win = newwin(0, 0, x, y);
 	menu->sub_win  = newwin(0, 0, x, y);
 
-	menu->items = items;
-
 	menu->cols = 1;
-	menu->rows = y/2;
+	menu->win_rows = y/2;
 
 	menu->foreground = COLOR_WHITE;
 	menu->background = COLOR_BLACK;
@@ -78,14 +84,13 @@ new_menu(item_t **items)
 
 	menu->active = 0;
 
-	menu->cur_item = items[0];
-
 	int i;
 	for (i = 0; items[i]; i++) {
 		items[i]->index = i;
 	}
 	menu->max_items = i;
-
+	menu->items = items;
+	menu->cur_item = items[0];
 
 	return menu;
 }
@@ -105,7 +110,7 @@ static void
 draw_menu(menu_t *menu)
 {
 	int i;
-	for (i = 0; i < menu->max_items; i++) {
+	for (i = menu->top_row; i < menu->win_rows; i++) {
 	if (i == menu->cur_row)
 		wattron(menu->sub_win, A_STANDOUT);
 	else
@@ -119,7 +124,6 @@ activate_menu(menu_t *menu)
 {
 	menu->active = 1;
 	draw_menu(menu);
-	wrefresh(menu->main_win);
 	wrefresh(menu->sub_win);
 }
 
@@ -127,7 +131,6 @@ void
 diactivate_menu(menu_t *menu)
 {
 	menu->active = 0;
-	wclear(menu->main_win);
 	wclear(menu->sub_win);
 }
 
@@ -135,7 +138,6 @@ int
 bind_menu_win(menu_t *menu, WINDOW *win)
 {
 	menu->main_win = win;
-	
 	return 0;
 }
 
@@ -143,7 +145,6 @@ int
 bind_menu_subwin(menu_t *menu, WINDOW *win)
 {
 	menu->sub_win = win;
-	
 	return 0;
 }
 
@@ -151,8 +152,6 @@ int
 set_menu_foreground(menu_t *menu, chtype color)
 {
 	menu->foreground = color;
-	menu_driver(menu, MENU_UPDATE);
-
 	return 0;
 }
 
@@ -160,8 +159,6 @@ int
 set_menu_background(menu_t *menu, chtype color)
 {
 	menu->foreground = color;
-	menu_driver(menu, MENU_UPDATE);
-
 	return 0;
 }
 
@@ -169,36 +166,51 @@ int
 set_menu_format(menu_t *menu, unsigned int cols, unsigned int rows)
 {
 	menu->cols = cols;
-	menu->rows = rows;
-	menu_driver(menu, MENU_UPDATE);
-
+	menu->win_rows = rows;
 	return 0;
 }
 
 int
 menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 {
-	if (menu->active)
+	if (!menu->active)
 		return 1;
 	switch (act)
 	{
 		case MENU_SCRL_UP:
+			if (menu->top_row > 0)
+			{
+				menu->top_row--;
+				draw_menu(menu);
+			}
 			break;
 		case MENU_SCRL_DOWN:
+			if (item_index(menu->cur_item)+menu->win_rows < menu->max_items)
+			{
+				menu->top_row++;
+				draw_menu(menu);
+			}
 			break;
 
 		case MENU_NEXT_ITEM:
-			if (item_index(menu->cur_item) > 0)
+			if (item_index(menu->cur_item) < menu->max_items)
 			{
-				(menu->cur_item)++;
-				(menu->cur_row)++;
+				menu->cur_item++;
+				menu->cur_row++;
 				draw_menu(menu);
 			}
 			break;
 		case MENU_PREV_ITEM:
-			if (item_index(menu->cur_item) < menu->max_items)
+			if (item_index(menu->cur_item) > 0)
 			{
-				(menu->cur_item)--;
+				if (menu->cur_row == (menu->win_rows-1))
+				{
+					menu_driver(menu, MENU_SCRL_UP);
+				} else {
+					menu->cur_item--;
+					menu->cur_row--;
+				}
+				draw_menu(menu);
 			}
 			break;
 
@@ -208,14 +220,18 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			break;
 
 		case MENU_LAST_ITEM:
+			menu->cur_item = menu->items[menu->max_items];
+			menu->cur_row = menu->win_rows;
+			/* menu->top_row = */ 
+			draw_menu(menu);
 			break;
 		case MENU_FIRST_ITEM:
+			menu->cur_item = menu->items[0];
+			menu->cur_row = 0;
+			draw_menu(menu);
 			break;
 
 		case MENU_SELECT_ITEM:
-			break;
-
-		case MENU_UPDATE:
 			break;
 	}
 	wrefresh(menu->sub_win);

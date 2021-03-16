@@ -3,6 +3,7 @@
 
 #include <ncurses.h>
 #include "../games/gamerec.h"
+#include "menu.h"
 
 #define MAX_STATUS_BUF 4096
 
@@ -46,14 +47,14 @@ void resizeHandler(int sig);
 void init_tui(void);
 void destroy_tui(void);
 
-void init_game_menu(void);
-void destroy_game_menu(void);
+menu_t *init_game_menu(void);
+void destroy_game_menu(menu_t *menu);
 
 void show_status_bar(void);
 void add_str_status_buf(int pos, const char *str);
 void show_header(void);
 
-void menu_move(aval_t aval);
+void menu_move(menu_t *menu, aval_t aval);
 
 /* util */
 

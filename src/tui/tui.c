@@ -34,7 +34,6 @@ static int g_perc_field_gn   = 60,
 		   g_perc_field_gen  = 30,
 		   g_perc_field_stat = 10;
 
-static menu_t *g_menu_list;
 static item_t **g_items;
 static unsigned int g_items_count = 0;
 
@@ -123,19 +122,18 @@ init_tui()
 void
 destroy_tui()
 {
-	destroy_game_menu();
-
 	curs_set(1);
 	echo();
 
 	endwin();
 }
 
-void
+menu_t *
 init_game_menu()
 {
+	menu_t *menu;
 	g_items_count = gr_tab.ngames;
-	g_items = (item_t **)calloc(g_items_count+1, sizeof(item_t *));
+	g_items = (item_t **)ecalloc(g_items_count+1, sizeof(item_t *));
 
 	int i;
 	for (i = 0; i < g_items_count; i++) {
@@ -145,17 +143,17 @@ init_game_menu()
 	g_items[g_items_count] = (item_t *)NULL;
 
 	/* creating menu */
-	g_menu_list = new_menu((item_t **)g_items);
+	menu = new_menu(g_items);
 
 	/* binding menu to windows */
 	int w, h;
 	getmaxyx(w_game_list, h, w);
 	WINDOW *ms_win = derwin(w_game_list, h-1, w, 1, 0);
-	bind_menu_win(g_menu_list, w_game_list);
-	bind_menu_subwin(g_menu_list, ms_win);
+	bind_menu_win(menu, w_game_list);
+	bind_menu_subwin(menu, ms_win);
 
 	/* menu options */
-	set_menu_format(g_menu_list, h-1, 0);
+	set_menu_format(menu, 1, h-1);
 
 	/* menu title */
 	wattron(w_game_list, A_UNDERLINE);
@@ -163,16 +161,18 @@ init_game_menu()
 	mvwprintw(w_game_list, 0, 0, "%s", cut("Game name", g_max_gn));
 	mvwprintw(w_game_list, 0, g_max_gn+CENTER(g_max_gen, 5)-1, "%s", cut("Gener", g_max_gen));
 	mvwprintw(w_game_list, 0, g_max_gn+g_max_gen+CENTER(g_max_stat, 6)-1, "Status");
-	wattroff(w_game_list, A_NORMAL);
+	wattroff(w_game_list, A_UNDERLINE);
 
-	activate_menu(g_menu_list);
+	activate_menu(menu);
+
+	return menu;
 }
 
 void
-destroy_game_menu()
+destroy_game_menu(menu_t *menu)
 {
-	diactivate_menu(g_menu_list);
-	del_menu(g_menu_list);
+	diactivate_menu(menu);
+	del_menu(menu);
 
 	//TODO ???gr_tab.ngames
 	for (int i = 0; i < g_items_count; i++) {
@@ -198,7 +198,7 @@ show_status_bar()
 	char *left, *mid, *right;
 
 	//TODO
-	char msg[100] = {0};
+	char msg[COLUMNS/3+1];
 	esnprintf(msg, sizeof(msg), "Games: %d", g_items_count);
 	add_str_status_buf(0, msg);
 
@@ -233,7 +233,7 @@ add_str_status_buf(int pos, const char *str)
 }
 
 void
-menu_move(aval_t a)
+menu_move(menu_t *menu, aval_t a)
 {
 	int id = -1;
 	int counter = 0;
@@ -241,42 +241,42 @@ menu_move(aval_t a)
 		/* movements */
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 		case M_UP:
-		if (item_index(cur_menu_item(g_menu_list)) == 0)
-			break;
-			if (a.val >= item_index(cur_menu_item(g_menu_list))) {
-				menu_driver(g_menu_list, MENU_FIRST_ITEM);
-				break;
-			}
+		/* if (item_index(cur_menu_item(menu)) == 0) */
+		/* 	break; */
+			/* if (a.val >= item_index(cur_menu_item(menu))) { */
+			/* 	menu_driver(menu, MENU_FIRST_ITEM); */
+			/* 	break; */
+			/* } */
 
-			do {
-				menu_driver(g_menu_list, MENU_PREV_ITEM);
-				counter++;
-			} while (counter < a.val);
+			/* do { */
+				menu_driver(menu, MENU_PREV_ITEM);
+				/* counter++; */
+			/* } while (counter < a.val); */
 			break;
 		case M_DOWN:
-			if (item_index(cur_menu_item(g_menu_list)) == (g_items_count-1))
-				break;
-			if (a.val >= (g_items_count - item_index(cur_menu_item(g_menu_list)))) {
-				menu_driver(g_menu_list, MENU_LAST_ITEM);
-				break;
-			}
+			/* if (item_index(cur_menu_item(menu)) == (g_items_count-1)) */
+			/* 	break; */
+			/* if (a.val >= (g_items_count - item_index(cur_menu_item(menu)))) { */
+			/* 	menu_driver(menu, MENU_LAST_ITEM); */
+			/* 	break; */
+			/* } */
 
-			do {
-				menu_driver(g_menu_list, MENU_NEXT_ITEM);
-				counter++;
-			} while (counter < a.val);
+			/* do { */
+				menu_driver(menu, MENU_NEXT_ITEM);
+				/* counter++; */
+			/* } while (counter < a.val); */
 			break;
 		case M_DPAGE:
-			menu_driver(g_menu_list, MENU_NEXTP_ITEM);
+			menu_driver(menu, MENU_NEXTP_ITEM);
 			break;
 		case M_UPAGE:
-			menu_driver(g_menu_list, MENU_PREVP_ITEM);
+			menu_driver(menu, MENU_PREVP_ITEM);
 			break;
 		case M_FIRST:
-			menu_driver(g_menu_list, MENU_FIRST_ITEM);
+			menu_driver(menu, MENU_FIRST_ITEM);
 			break;
 		case M_LAST:
-			menu_driver(g_menu_list, MENU_FIRST_ITEM);
+			menu_driver(menu, MENU_FIRST_ITEM);
 			break;
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 
@@ -284,7 +284,7 @@ menu_move(aval_t a)
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 		case SELECT_ITEM:
 			if (g_items_count > 0) {
-				id = gr_id(grt_find(item_val(cur_menu_item(g_menu_list))));
+				id = gr_id(grt_find(item_val(cur_menu_item(menu))));
 				run_game(id);
 			} else {
 				/* no games msg handler */
@@ -301,17 +301,17 @@ menu_move(aval_t a)
 
 		case DELETE_ITEM:
 			if (g_items_count == 0) {
-				diactivate_menu(g_menu_list);
+				diactivate_menu(menu);
 				break;
 			}
 
-			int i = item_index(cur_menu_item(g_menu_list));
+			int i = item_index(cur_menu_item(menu));
 			if (i < 0) {
 				/* cant get item index */
 				break;
 			}
 			/* delete from gr_tab */
-			id = gr_id(grt_find(item_val(cur_menu_item(g_menu_list))));
+			id = gr_id(grt_find(item_val(cur_menu_item(menu))));
 			gr_delete(id);
 
 			/* delete form items arr and cache */
@@ -319,8 +319,8 @@ menu_move(aval_t a)
 			db_rm_game(id);
 
 			/* delete menu */
-			diactivate_menu(g_menu_list);
-			del_menu(g_menu_list);
+			diactivate_menu(menu);
+			del_menu(menu);
 
 			/* resizing items arr */
 			memmove(g_items+i, g_items+i+1,
@@ -329,18 +329,18 @@ menu_move(aval_t a)
 			g_items_count--;
 
 			/* creating new menu */
-			g_menu_list = new_menu(g_items);
+			menu = new_menu(g_items);
 			int w, h;
 			getmaxyx(w_game_list, h, w);
 			WINDOW *ms_win = derwin(w_game_list, h-1, w, 1, 0);
-			bind_menu_win(g_menu_list, w_game_list);
-			bind_menu_subwin(g_menu_list, ms_win);
+			bind_menu_win(menu, w_game_list);
+			bind_menu_subwin(menu, ms_win);
 
 			/* menu options */
-			set_menu_format(g_menu_list, h-1, 0);
+			set_menu_format(menu, h-1, 0);
 
 			/* showing menu */
-			activate_menu(g_menu_list);
+			activate_menu(menu);
 			break;
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 

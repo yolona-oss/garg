@@ -2,6 +2,7 @@
 #define _RUN_H_
 
 #include <limits.h>
+#include "menu.h"
 
 /* vars */
 extern int done;

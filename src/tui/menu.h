@@ -17,7 +17,7 @@ struct menu_t {
 	WINDOW *main_win;
 	WINDOW *sub_win;
 	
-	unsigned int rows;
+	unsigned int win_rows;
 	unsigned int cols;
 
 	chtype foreground;
@@ -45,8 +45,6 @@ enum REQ_MENU_ACTION {
 	MENU_FIRST_ITEM,
 
 	MENU_SELECT_ITEM,
-
-	MENU_UPDATE,
 };
 
 /* funcs */
