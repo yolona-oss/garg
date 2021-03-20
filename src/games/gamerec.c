@@ -236,7 +236,7 @@ gr_make_id(const char *str)
 		ret = 2 * ret + *p;
 	}
 
-	return ret % UINT_MAX;
+	return ret % USHRT_MAX;
 }
 
 game_t *

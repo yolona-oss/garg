@@ -9,7 +9,7 @@ typedef struct menu_t menu_t;
 struct item_t {
 	char *name;
 	int val;
-	unsigned int index;
+	int index;
 };
 
 struct menu_t {
@@ -24,8 +24,8 @@ struct menu_t {
 	chtype background;
 
 	item_t **items;
-	item_t  *cur_item;
-	unsigned int max_items;
+	unsigned int cur_item_id;
+	unsigned int items_count;
 
 	unsigned short top_row;
 	unsigned short cur_row;

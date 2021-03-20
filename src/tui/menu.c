@@ -3,23 +3,22 @@
 #include "../utils/eprintf.h"
 #include "menu.h"
 
-static int save_menu_position(menu_t *menu);
+/* static int save_menu_position(menu_t *menu); */
 static void draw_menu(menu_t *menu);
 
-static int
-save_menu_position(menu_t *menu)
-{
+/* static int */
+/* save_menu_position(menu_t *menu) */
+/* { */
 
-	return 0;
-}
+/* 	return 0; */
+/* } */
 
 item_t *
 new_item(char *name, int val)
 {
-	item_t *item = (item_t *)emalloc(sizeof*item);
+	item_t *item = (item_t *)ecalloc(1, sizeof*item);
 	item->name = name;
 	item->val  = val;
-	item->index = -1;
 	return item;
 }
 
@@ -32,7 +31,7 @@ del_item(item_t *item)
 item_t *
 cur_menu_item(menu_t *menu)
 {
-	return menu->cur_item;
+	return menu->items[menu->cur_item_id];
 }
 
 int
@@ -66,7 +65,8 @@ menu_t *
 new_menu(item_t **items)
 {
 	int x, y;
-	menu_t *menu = (menu_t *)ecalloc(1, sizeof*menu);
+	menu_t *menu;
+	menu = (menu_t *)ecalloc(1, sizeof*menu);
 
 	getmaxyx(stdscr, y, x);
 	
@@ -88,10 +88,10 @@ new_menu(item_t **items)
 	for (i = 0; items[i]; i++) {
 		items[i]->index = i;
 	}
-	menu->max_items = i;
 	menu->items = items;
-	menu->cur_item = items[0];
-
+	menu->items_count = i;
+	menu->cur_item_id = 0;
+	
 	return menu;
 }
 
@@ -109,13 +109,19 @@ del_menu(menu_t *menu)
 static void
 draw_menu(menu_t *menu)
 {
-	int i;
-	for (i = menu->top_row; i < menu->win_rows; i++) {
-	if (i == menu->cur_row)
-		wattron(menu->sub_win, A_STANDOUT);
-	else
-		wattroff(menu->sub_win, A_STANDOUT);
-	mvwprintw(menu->sub_win, i, 0, "%s", menu->items[i]->name);
+	int i, j, sel_row;
+	if (menu->cur_row > menu->win_rows-1) {
+		sel_row = menu->win_rows + menu->top_row -1;
+	} else {
+		sel_row = menu->cur_row;
+	}
+	for (j = 0, i = menu->top_row; j < menu->win_rows; i++, j++)
+	{
+		if (i == sel_row)
+			wattron(menu->sub_win, A_STANDOUT);
+		else
+			wattroff(menu->sub_win, A_STANDOUT);
+		mvwprintw(menu->sub_win, j, 0, "%s", item_name(menu->items[i]));
 	}
 }
 
@@ -124,7 +130,7 @@ activate_menu(menu_t *menu)
 {
 	menu->active = 1;
 	draw_menu(menu);
-	wrefresh(menu->sub_win);
+	wnoutrefresh(menu->sub_win);
 }
 
 void
@@ -185,7 +191,7 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			}
 			break;
 		case MENU_SCRL_DOWN:
-			if (item_index(menu->cur_item)+menu->win_rows < menu->max_items)
+			if (item_index(cur_menu_item(menu))+menu->win_rows < menu->items_count)
 			{
 				menu->top_row++;
 				draw_menu(menu);
@@ -193,22 +199,23 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			break;
 
 		case MENU_NEXT_ITEM:
-			if (item_index(menu->cur_item) < menu->max_items)
+			if (item_index(cur_menu_item(menu)) < menu->items_count)
 			{
-				menu->cur_item++;
+				menu->cur_item_id++;
 				menu->cur_row++;
+				if (menu->cur_row > (menu->win_rows-1)) {
+					menu->top_row++;
+				}
 				draw_menu(menu);
 			}
 			break;
 		case MENU_PREV_ITEM:
-			if (item_index(menu->cur_item) > 0)
+			if (item_index(cur_menu_item(menu)) > 0)
 			{
-				if (menu->cur_row == (menu->win_rows-1))
-				{
-					menu_driver(menu, MENU_SCRL_UP);
-				} else {
-					menu->cur_item--;
-					menu->cur_row--;
+				menu->cur_item_id--;
+				menu->cur_row--;
+				if (menu->cur_row == (menu->win_rows)) {
+					menu->top_row--;
 				}
 				draw_menu(menu);
 			}
@@ -220,13 +227,13 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			break;
 
 		case MENU_LAST_ITEM:
-			menu->cur_item = menu->items[menu->max_items];
+			menu->cur_item_id = menu->items_count;
 			menu->cur_row = menu->win_rows;
 			/* menu->top_row = */ 
 			draw_menu(menu);
 			break;
 		case MENU_FIRST_ITEM:
-			menu->cur_item = menu->items[0];
+			menu->cur_item_id = 0;
 			menu->cur_row = 0;
 			draw_menu(menu);
 			break;

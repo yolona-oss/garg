@@ -80,6 +80,7 @@ run()
 					check_gr_tab();
 					break;
 				case INPUT:
+					add_str_status_buf(2, "INPUT");
 					av = key_to_action(event.key);
 					menu_move(menu, *av);
 					free(av);
