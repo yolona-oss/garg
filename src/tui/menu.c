@@ -64,17 +64,11 @@ edit_item(item_t *item, char *name, int val)
 menu_t *
 new_menu(item_t **items)
 {
-	int x, y;
 	menu_t *menu;
 	menu = (menu_t *)ecalloc(1, sizeof*menu);
 
-	getmaxyx(stdscr, y, x);
-	
-	menu->main_win = newwin(0, 0, x, y);
-	menu->sub_win  = newwin(0, 0, x, y);
-
 	menu->cols = 1;
-	menu->win_rows = y/2;
+	menu->win_rows = 1;
 
 	menu->foreground = COLOR_WHITE;
 	menu->background = COLOR_BLACK;
@@ -111,15 +105,9 @@ draw_menu(menu_t *menu)
 {
 	if (menu->items_count) {
 		unsigned int i, j, sel_row;
-		if (menu->cur_row - menu->top_row == menu->win_rows-1) { /* in the bottom */
-			sel_row = menu->win_rows-1;
-		} else if (menu->cur_row == menu->top_row) { /* in the top */
-			sel_row = 0;
-		} else {
-			sel_row = menu->cur_row - menu->top_row;
-		}
+		sel_row = menu->cur_row - menu->top_row;
 
-		for (j = 0, i = menu->top_row; j < menu->win_rows && j < menu->items_count; i++, j++)
+		for (j = 0, i = menu->top_row; j < menu->win_rows && j < menu->items_count; i++, j++) // TODO
 		{
 			if (j == sel_row) {
 				wattron(menu->sub_win, A_STANDOUT);
@@ -145,7 +133,7 @@ void
 diactivate_menu(menu_t *menu)
 {
 	menu->active = 0;
-	wclear(menu->sub_win);
+	wclear(menu->main_win);
 }
 
 int
@@ -268,6 +256,11 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			draw_menu(menu);
 			break;
 
+		case MENU_TOGGLE_DOCK:
+			wresize(menu->main_win, 30, 10);
+			wresize(menu->sub_win, 30, 10);
+			break;
+
 		case MENU_SELECT_ITEM:
 			/* TODO */
 			break;
@@ -276,6 +269,10 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			break;
 
 		case MENU_DELETE_ITEM:
+			break;
+
+		case MENU_REFRESH:
+			draw_menu(menu);
 			break;
 	}
 	wrefresh(menu->sub_win);

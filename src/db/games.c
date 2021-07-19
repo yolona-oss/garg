@@ -30,6 +30,7 @@ db_put_rec(sqlite3 *db, game_t *grp)
 	const char *sql_req = "INSERT INTO \
 		Games(\
 		id, \
+		last_time, \
 		play_time, \
 		name, \
 		icon, \
@@ -38,7 +39,7 @@ db_put_rec(sqlite3 *db, game_t *grp)
 		start_point, \
 		start_argv, \
 		uninstaller) \
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?) \
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
 		ON CONFLICT (name) DO UPDATE SET id = id";
 
 	rc = sqlite3_prepare_v2(db, sql_req, -1, &res, 0);
@@ -46,17 +47,18 @@ db_put_rec(sqlite3 *db, game_t *grp)
 	if (rc == SQLITE_OK)
 	{
 		sqlite3_bind_int(res, 1, grp->id);
-		sqlite3_bind_int(res, 2, grp->play_time.tm_min); //TODO
-		sqlite3_bind_text(res, 3, grp->name, strlen(grp->name), NULL);
+		sqlite3_bind_int(res, 2, grp->last_time.tm_min); //TODO
+		sqlite3_bind_int(res, 3, grp->play_time.tm_min); //TODO
+		sqlite3_bind_text(res, 4, grp->name, strlen(grp->name), NULL);
 
-		if (grp->icon)  sqlite3_bind_text(res, 4, grp->icon, strlen(grp->icon), NULL);
-		if (grp->gener) sqlite3_bind_text(res, 5, grp->gener, strlen(grp->gener), NULL);
+		if (grp->icon)  sqlite3_bind_text(res, 5, grp->icon, strlen(grp->icon), NULL);
+		if (grp->gener) sqlite3_bind_text(res, 6, grp->gener, strlen(grp->gener), NULL);
 
-		sqlite3_bind_text(res, 6, grp->location, strlen(grp->location), NULL);
-		sqlite3_bind_text(res, 7, grp->start_point, strlen(grp->start_point), NULL);
+		sqlite3_bind_text(res, 7, grp->location, strlen(grp->location), NULL);
+		sqlite3_bind_text(res, 8, grp->start_point, strlen(grp->start_point), NULL);
 
-		if (grp->start_argv)  sqlite3_bind_text(res, 8, grp->start_argv, strlen(grp->start_argv), NULL);
-		if (grp->uninstaller) sqlite3_bind_text(res, 9, grp->uninstaller, strlen(grp->uninstaller), NULL);
+		if (grp->start_argv)  sqlite3_bind_text(res, 9, grp->start_argv, strlen(grp->start_argv), NULL);
+		if (grp->uninstaller) sqlite3_bind_text(res, 10, grp->uninstaller, strlen(grp->uninstaller), NULL);
 
 
 		sqlite3_step(res);
@@ -94,8 +96,6 @@ db_rm_game(int id)
 int
 db_read_cached_recs()
 {
-	/* printf("Reading game records...\n"); */
-
 	sqlite3 *db;
 	if (!(db=db_init())) {
 		warn("Cant write cache.");
@@ -111,27 +111,27 @@ db_read_cached_recs()
 		char *tmp;
 		game_t *grp = (game_t *)ecalloc(1, sizeof*grp);
 
-		/*  0,  1,    2,    3,     4,   5,  6,    7,      8 */
-		/* id, pt, name, icon, gener, loc, sp, sarg, uninst */
+		/*  0,  1,  2,    3,    4,    5,    6,  7,   8        9 */
+		/* id, lt, pt, name, icon, gener, loc, sp, sarg, uninst */
 		while (sqlite3_step(res) == SQLITE_ROW) {
 			grp->id        = sqlite3_column_int(res, 0);
-			/* grp->last_time.tm_min = */ //TODO
-			grp->play_time.tm_min = sqlite3_column_int(res, 1);
-			grp->name = estrdup((const char*)sqlite3_column_text(res, 2));
-
-			tmp = (char *)sqlite3_column_text(res, 3);
-			grp->icon = tmp ? estrdup(tmp) : NULL;
+			grp->last_time.tm_min = sqlite3_column_int(res, 1);
+			grp->play_time.tm_min = sqlite3_column_int(res, 2);
+			grp->name = estrdup((const char*)sqlite3_column_text(res, 3));
 
 			tmp = (char *)sqlite3_column_text(res, 4);
+			grp->icon = tmp ? estrdup(tmp) : NULL;
+
+			tmp = (char *)sqlite3_column_text(res, 5);
 			grp->gener = tmp ? estrdup(tmp) : NULL;
 
-			grp->location    = estrdup((const char*)sqlite3_column_text(res, 5));
-			grp->start_point = estrdup((const char*)sqlite3_column_text(res, 6));
-
-			tmp = (char *)sqlite3_column_text(res, 7);
-			grp->start_argv = tmp ? estrdup(tmp) : NULL;
+			grp->location    = estrdup((const char*)sqlite3_column_text(res, 6));
+			grp->start_point = estrdup((const char*)sqlite3_column_text(res, 7));
 
 			tmp = (char *)sqlite3_column_text(res, 8);
+			grp->start_argv = tmp ? estrdup(tmp) : NULL;
+
+			tmp = (char *)sqlite3_column_text(res, 9);
 			grp->uninstaller = tmp ? estrdup(tmp) : NULL;
 
 			gr_add(grp);
@@ -149,8 +149,6 @@ db_cache_recs(void)
 {
 	int i;
 	sqlite3 *db;
-
-	/* printf("Writing game records...\n"); fflush(stdout); */
 
 	if (!(db=db_init())) {
 		warn("Cant write cache.");

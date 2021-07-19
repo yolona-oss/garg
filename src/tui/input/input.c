@@ -165,7 +165,7 @@ key_to_action(const char key)
 	aval_t *aval;
 	aval = (aval_t *)ecalloc(1, sizeof*aval);
 	aval->action = NOTHING;
-	aval->val = 0;
+	aval->val = 1;
 
 	char *str;
 

@@ -16,6 +16,7 @@ struct menu_t {
 	unsigned int active;
 	WINDOW *main_win;
 	WINDOW *sub_win;
+	WINDOW *dock_win;
 
 	unsigned int win_rows;
 	unsigned int cols;
@@ -44,9 +45,13 @@ enum REQ_MENU_ACTION {
 	MENU_LAST_ITEM,
 	MENU_FIRST_ITEM,
 
+	MENU_TOGGLE_DOCK,
+
 	MENU_SELECT_ITEM,
 	MENU_DELETE_ITEM,
 	MENU_ITEM_EDIT,
+
+	MENU_REFRESH,
 };
 
 /* funcs */

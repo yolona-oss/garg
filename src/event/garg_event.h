@@ -10,6 +10,7 @@ enum EVENT_ID {
 
 typedef struct event_t event_t;
 struct event_t {
+	int up;
 	enum EVENT_ID type;
 	char buf[1025];
 	char key;

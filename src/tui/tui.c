@@ -128,6 +128,16 @@ destroy_tui()
 	endwin();
 }
 
+static void
+draw_menu_title(menu_t *menu) {
+	wattron(w_game_list, A_UNDERLINE);
+	whline(menu->main_win, ' ', COLUMNS);
+	mvwprintw(menu->main_win, 0, 0, "%s", cut("Game name", g_max_gn));
+	mvwprintw(menu->main_win, 0, g_max_gn+CENTER(g_max_gen, 5)-1, "%s", cut("Gener", g_max_gen));
+	mvwprintw(menu->main_win, 0, g_max_gn+g_max_gen+CENTER(g_max_stat, 6)-1, "Status");
+	wattroff(menu->main_win, A_UNDERLINE);
+}
+
 menu_t *
 init_game_menu()
 {
@@ -152,15 +162,10 @@ init_game_menu()
 	bind_menu_subwin(menu, ms_win);
 
 	/* menu options */
-	set_menu_format(menu, 1, h-1);
+	set_menu_format(menu, w, h-1);
 
 	/* menu title */
-	wattron(w_game_list, A_UNDERLINE);
-	whline(w_game_list, ' ', COLUMNS);
-	mvwprintw(w_game_list, 0, 0, "%s", cut("Game name", g_max_gn));
-	mvwprintw(w_game_list, 0, g_max_gn+CENTER(g_max_gen, 5)-1, "%s", cut("Gener", g_max_gen));
-	mvwprintw(w_game_list, 0, g_max_gn+g_max_gen+CENTER(g_max_stat, 6)-1, "Status");
-	wattroff(w_game_list, A_UNDERLINE);
+	draw_menu_title(menu);
 
 	activate_menu(menu);
 
@@ -231,41 +236,32 @@ add_str_status_buf(int pos, const char *str)
 }
 
 int
-menu_move(menu_t *menu, aval_t a)
+menu_move(menu_t *menu, aval_t *a)
 {
 	if (!menu->items_count) { //zero items
 		return 1;
 	}
+
+	if (!a) {
+		menu_driver(menu, MENU_REFRESH);
+		return 0;
+	}
 	int id = -1;
 	int counter = 0;
-	switch (a.action) {
+	switch (a->action) {
 		/* Movements */
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 		case M_UP:
-			if (item_index(cur_menu_item(menu)) == 0)
-				break;
-			if (a.val >= item_index(cur_menu_item(menu))) {
-				menu_driver(menu, MENU_FIRST_ITEM);
-				break;
-			}
-
 			do {
 				menu_driver(menu, MENU_PREV_ITEM);
 				counter++;
-			} while (counter < a.val);
+			} while (counter < a->val);
 			break;
 		case M_DOWN:
-			if (item_index(cur_menu_item(menu)) == (menu_items_count(menu)-1))
-				break;
-			if (a.val >= (menu_items_count(menu) - item_index(cur_menu_item(menu)))) {
-				menu_driver(menu, MENU_LAST_ITEM);
-				break;
-			}
-
 			do {
 				menu_driver(menu, MENU_NEXT_ITEM);
 				counter++;
-			} while (counter < a.val);
+			} while (counter < a->val);
 			break;
 		case M_DPAGE:
 			menu_driver(menu, MENU_NEXTP_ITEM);
@@ -284,14 +280,19 @@ menu_move(menu_t *menu, aval_t a)
 		/* Item action */
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 		case RUN_ITEM:
-			if (menu->items_count > 0) {
-				id = gr_id(grt_find(item_val(cur_menu_item(menu))));
-				run_game(id);
-			} else {
-				/* no games msg handler */
-			}
+			id = gr_id(grt_find(item_val(cur_menu_item(menu))));
+			run_game(id);
 			break;
 		case ITEM_INFO_TOGGLE:
+			//1 check if already toggled
+			//if not toggled
+				//1 resize list window
+				//2 create info window
+				//3 bind info win rander to main loop
+			//if toggled
+				//1 delete inf win
+				//2 unbild info rander
+			wresize(w_game_list, 10, 10);
 			break;
 
 		case EDIT_ITEM:

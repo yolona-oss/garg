@@ -54,7 +54,7 @@ void show_status_bar(void);
 void add_str_status_buf(int pos, const char *str);
 void show_header(void);
 
-int menu_move(menu_t *menu, aval_t aval);
+int menu_move(menu_t *menu, aval_t *aval);
 
 /* util */
 

@@ -120,10 +120,10 @@ main(int argc, char **argv)
 	}
 
 	/* redirect errors msg to log file */
-	/* int logf    = open("log", O_WRONLY); */
-	/* if (logf) { */
-	/* 	dup2(logf, 2); */
-	/* } */
+	int logf    = open("log", O_WRONLY);
+	if (logf) {
+		dup2(logf, 2);
+	}
 
 	int rc = run();
 

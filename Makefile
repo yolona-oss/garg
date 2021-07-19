@@ -1,4 +1,4 @@
-CC = gcc
+CC = ccache gcc
 
 INC     =
 LDFLAGS =

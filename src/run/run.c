@@ -29,8 +29,8 @@ pre(void)
 	/* signal(SIGWINCH, resizeHandler); */
 
 	/* events */
-	event_action(TIMER, check_timer);
 	event_action(INPUT, check_input);
+	event_action(TIMER, check_timer);
 
 	init_tui();
 
@@ -77,16 +77,18 @@ run()
 			switch (event.type)
 			{
 				case TIMER:
+					add_str_status_buf(2, "TIMER");
 					check_gr_tab();
 					break;
 				case INPUT:
-					add_str_status_buf(2, "INPUT");
 					av = key_to_action(event.key);
-					menu_move(menu, *av);
+					add_str_status_buf(2, "INPUT");
+					menu_move(menu, av);
 					free(av);
 					break;
 
 				default:
+					add_str_status_buf(2, "def");
 					break;
 			}
 		}
