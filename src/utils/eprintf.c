@@ -140,7 +140,6 @@ char
 
 	if (!p) {
 		die("Cant duplicate string \"%s\"", str);
-		return NULL;
 	}
 
 	return p;

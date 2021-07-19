@@ -22,7 +22,7 @@ enum MENU_ACT {
 	M_FIRST,
 	M_LAST,
 
-	SELECT_ITEM,
+	RUN_ITEM,
 	ITEM_INFO_TOGGLE,
 	FIND_ITEM,
 	EDIT_ITEM,
@@ -42,7 +42,7 @@ struct aval_t {
 extern int done;
 
 /* funcs */
-void resizeHandler(int sig);
+void resizeHandler(void);
 
 void init_tui(void);
 void destroy_tui(void);
@@ -54,7 +54,7 @@ void show_status_bar(void);
 void add_str_status_buf(int pos, const char *str);
 void show_header(void);
 
-void menu_move(menu_t *menu, aval_t aval);
+int menu_move(menu_t *menu, aval_t aval);
 
 /* util */
 

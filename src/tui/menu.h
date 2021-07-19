@@ -13,10 +13,10 @@ struct item_t {
 };
 
 struct menu_t {
-	unsigned int active: 1;
+	unsigned int active;
 	WINDOW *main_win;
 	WINDOW *sub_win;
-	
+
 	unsigned int win_rows;
 	unsigned int cols;
 
@@ -45,6 +45,8 @@ enum REQ_MENU_ACTION {
 	MENU_FIRST_ITEM,
 
 	MENU_SELECT_ITEM,
+	MENU_DELETE_ITEM,
+	MENU_ITEM_EDIT,
 };
 
 /* funcs */
@@ -56,7 +58,7 @@ void del_item(item_t *item);
 char *item_name(item_t *item);
 int   item_val(item_t *item);
 item_t *cur_menu_item(menu_t *menu);
-int item_index(item_t *item);
+unsigned int item_index(item_t *item);
 
 void edit_item(item_t *item, char *name, int val);
 
@@ -67,6 +69,8 @@ int del_menu(menu_t *menu);
 
 void activate_menu(menu_t *menu);
 void diactivate_menu(menu_t *menu);
+
+int menu_items_count(menu_t *menu);
 
 int del_menu_item(menu_t *menu, int ind);
 

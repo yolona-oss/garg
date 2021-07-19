@@ -34,7 +34,7 @@ cur_menu_item(menu_t *menu)
 	return menu->items[menu->cur_item_id];
 }
 
-int
+unsigned int
 item_index(item_t *item)
 {
 	return item->index;
@@ -43,7 +43,7 @@ item_index(item_t *item)
 char *
 item_name(item_t *item)
 {
-	return item->name;
+	return (item->name) ? item->name : NULL;
 }
 
 int
@@ -84,8 +84,8 @@ new_menu(item_t **items)
 
 	menu->active = 0;
 
-	int i;
-	for (i = 0; items[i]; i++) {
+	int i = 0;
+	for (; items[i]; i++) {
 		items[i]->index = i;
 	}
 	menu->items = items;
@@ -109,28 +109,36 @@ del_menu(menu_t *menu)
 static void
 draw_menu(menu_t *menu)
 {
-	int i, j, sel_row;
-	if (menu->cur_row > menu->win_rows-1) {
-		sel_row = menu->win_rows + menu->top_row -1;
-	} else {
-		sel_row = menu->cur_row;
-	}
-	for (j = 0, i = menu->top_row; j < menu->win_rows; i++, j++)
-	{
-		if (i == sel_row)
-			wattron(menu->sub_win, A_STANDOUT);
-		else
-			wattroff(menu->sub_win, A_STANDOUT);
-		mvwprintw(menu->sub_win, j, 0, "%s", item_name(menu->items[i]));
+	if (menu->items_count) {
+		unsigned int i, j, sel_row;
+		if (menu->cur_row - menu->top_row == menu->win_rows-1) { /* in the bottom */
+			sel_row = menu->win_rows-1;
+		} else if (menu->cur_row == menu->top_row) { /* in the top */
+			sel_row = 0;
+		} else {
+			sel_row = menu->cur_row - menu->top_row;
+		}
+
+		for (j = 0, i = menu->top_row; j < menu->win_rows && j < menu->items_count; i++, j++)
+		{
+			if (j == sel_row) {
+				wattron(menu->sub_win, A_STANDOUT);
+			} else {
+				wattroff(menu->sub_win, A_STANDOUT);
+			}
+			mvwprintw(menu->sub_win, j, 0, "%s", item_name(menu->items[i]));
+		}
 	}
 }
 
 void
 activate_menu(menu_t *menu)
 {
-	menu->active = 1;
-	draw_menu(menu);
-	wnoutrefresh(menu->sub_win);
+	if (menu) {
+		menu->active = 1;
+		draw_menu(menu);
+		wnoutrefresh(menu->sub_win);
+	}
 }
 
 void
@@ -138,6 +146,12 @@ diactivate_menu(menu_t *menu)
 {
 	menu->active = 0;
 	wclear(menu->sub_win);
+}
+
+int
+menu_items_count(menu_t *menu)
+{
+	return menu->items_count;
 }
 
 int
@@ -179,11 +193,13 @@ set_menu_format(menu_t *menu, unsigned int cols, unsigned int rows)
 int
 menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 {
-	if (!menu->active)
+	if (!menu->active) {
 		return 1;
+	}
 	switch (act)
 	{
 		case MENU_SCRL_UP:
+			/* TODO */
 			if (menu->top_row > 0)
 			{
 				menu->top_row--;
@@ -191,6 +207,7 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			}
 			break;
 		case MENU_SCRL_DOWN:
+			/* TODO */
 			if (item_index(cur_menu_item(menu))+menu->win_rows < menu->items_count)
 			{
 				menu->top_row++;
@@ -199,7 +216,7 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			break;
 
 		case MENU_NEXT_ITEM:
-			if (item_index(cur_menu_item(menu)) < menu->items_count)
+			if (item_index(cur_menu_item(menu)) < menu->items_count-1)
 			{
 				menu->cur_item_id++;
 				menu->cur_row++;
@@ -214,7 +231,7 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			{
 				menu->cur_item_id--;
 				menu->cur_row--;
-				if (menu->cur_row == (menu->win_rows)) {
+				if (menu->cur_row < menu->top_row) {
 					menu->top_row--;
 				}
 				draw_menu(menu);
@@ -222,23 +239,43 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			break;
 
 		case MENU_NEXTP_ITEM:
+			/* TODO */
+			;
+			unsigned int cur;
+			cur = menu->cur_row + menu->win_rows-1;
+			menu->top_row = menu->top_row + menu->win_rows-1;
+			if (cur > menu->items_count-1) {
+				menu->cur_row = menu->items_count-1;
+				menu->top_row = menu->items_count-1 - menu->win_rows;
+			}
+			draw_menu(menu);
 			break;
 		case MENU_PREVP_ITEM:
+			/* TODO */
 			break;
 
 		case MENU_LAST_ITEM:
-			menu->cur_item_id = menu->items_count;
-			menu->cur_row = menu->win_rows;
-			/* menu->top_row = */ 
+			/* TODO */
+			menu->cur_item_id = menu->items_count-1;
+			menu->cur_row = menu->items_count-1;
+			menu->top_row = menu->cur_row - menu->win_rows-1;
 			draw_menu(menu);
 			break;
 		case MENU_FIRST_ITEM:
 			menu->cur_item_id = 0;
 			menu->cur_row = 0;
+			menu->top_row = 0;
 			draw_menu(menu);
 			break;
 
 		case MENU_SELECT_ITEM:
+			/* TODO */
+			break;
+
+		case MENU_ITEM_EDIT:
+			break;
+
+		case MENU_DELETE_ITEM:
 			break;
 	}
 	wrefresh(menu->sub_win);

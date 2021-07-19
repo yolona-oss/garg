@@ -26,7 +26,7 @@ static menu_t *
 pre(void)
 {
 	/* setupping resize handler */
-	signal(SIGWINCH, resizeHandler);
+	/* signal(SIGWINCH, resizeHandler); */
 
 	/* events */
 	event_action(TIMER, check_timer);

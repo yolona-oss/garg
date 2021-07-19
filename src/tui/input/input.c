@@ -185,15 +185,15 @@ key_to_action(const char key)
 				aval->val = val;
 				break;
 			case 'l':
-				aval->action = SELECT_ITEM;
+				aval->action = RUN_ITEM;
 				break;
 			case CTRL('j'):
-				aval->action = SELECT_ITEM;
+				aval->action = RUN_ITEM;
 				break;
-			case 'e':
+			case 'i':
 				aval->action = ITEM_INFO_TOGGLE;
 				break;
-			case 'E':
+			case 'e':
 				aval->action = EDIT_ITEM;
 				break;
 

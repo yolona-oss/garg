@@ -1,10 +1,9 @@
-CC = ccache gcc
+CC = gcc
 
 INC     =
 LDFLAGS =
 LDLIBS  = -l sqlite3 \
-		  -l ncursesw \
-		  -l menu
+		  -l ncurses
 
 CFLAGS  = -g -c -Wall -xc -O2 \
 		  -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600
