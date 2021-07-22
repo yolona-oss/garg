@@ -1,5 +1,4 @@
 #include <time.h>
-#include <ncurses.h>
 
 #include "garg_event.h"
 #include "../utils/eprintf.h"
@@ -40,12 +39,5 @@ check_timer()
 int
 check_input()
 {
-	char ch;
-	if ((ch = getch()) != ERR) {
-		add_event_key(INPUT, ch);
-		up_event(INPUT);
-		return 1;
-	}
-
 	return 0;
 }
