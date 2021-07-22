@@ -3,6 +3,8 @@
 #include "../utils/eprintf.h"
 #include "menu.h"
 
+#define MAX(x,y) (x > y) ? x : y
+
 /* static int save_menu_position(menu_t *menu); */
 static void draw_menu(menu_t *menu);
 
@@ -77,6 +79,7 @@ new_menu(item_t **items)
 	menu->cur_row = 0;
 
 	menu->active = 0;
+	menu->doc_active = 0;
 
 	int i = 0;
 	for (; items[i]; i++) {
@@ -125,6 +128,7 @@ activate_menu(menu_t *menu)
 	if (menu) {
 		menu->active = 1;
 		draw_menu(menu);
+		wnoutrefresh(menu->main_win);
 		wnoutrefresh(menu->sub_win);
 	}
 }
@@ -187,7 +191,6 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 	switch (act)
 	{
 		case MENU_SCRL_UP:
-			/* TODO */
 			if (menu->top_row > 0)
 			{
 				menu->top_row--;
@@ -195,7 +198,6 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			}
 			break;
 		case MENU_SCRL_DOWN:
-			/* TODO */
 			if (item_index(cur_menu_item(menu))+menu->win_rows < menu->items_count)
 			{
 				menu->top_row++;
@@ -244,9 +246,9 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 
 		case MENU_LAST_ITEM:
 			/* TODO */
-			menu->cur_item_id = menu->items_count-1;
-			menu->cur_row = menu->items_count-1;
-			menu->top_row = menu->cur_row - menu->win_rows-1;
+			menu->cur_item_id = menu->items_count;
+			menu->cur_row = menu->items_count;
+			menu->top_row = menu->cur_row - ((menu->win_rows > menu->items_count) ? menu->win_rows-1 : menu->items_count);
 			draw_menu(menu);
 			break;
 		case MENU_FIRST_ITEM:
@@ -254,11 +256,6 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			menu->cur_row = 0;
 			menu->top_row = 0;
 			draw_menu(menu);
-			break;
-
-		case MENU_TOGGLE_DOCK:
-			wresize(menu->main_win, 30, 10);
-			wresize(menu->sub_win, 30, 10);
 			break;
 
 		case MENU_SELECT_ITEM:
@@ -275,7 +272,7 @@ menu_driver(menu_t *menu, enum REQ_MENU_ACTION act)
 			draw_menu(menu);
 			break;
 	}
-	wrefresh(menu->sub_win);
+	wnoutrefresh(menu->sub_win);
 
 	return 0;
 }

@@ -41,6 +41,7 @@ static WINDOW *w_game_list,
 /* funcs */
 static char *rec_status(game_t gr);
 static char *game_entry(game_t gr);
+static void create_windows();
 
 /*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 
@@ -79,7 +80,7 @@ game_entry(game_t gr)
 
 	char *tmp = cut(gr.name, g_max_gn);
 	memmove(gn, tmp, strlen(tmp));
-	memmove(gener + CENTER(g_max_gen, 5), "GENER", 5);
+	memmove(gener + CENTER(g_max_gen, 5), "GENER", 5); //TODO
 	memmove(stat + CENTER(g_max_stat, 6), rec_status(gr), 6);
 
 	entry[COLUMNS] = '\0';
@@ -106,17 +107,7 @@ init_tui()
 	keypad(stdscr, 1);
 
 	getmaxyx(stdscr, ROWS, COLUMNS);
-
-	/* creating windows */
-	w_game_list  = newwin(ROWS-2, COLUMNS, 1, 0);
-	w_status_bar = newwin(1, COLUMNS, ROWS-1, 0);
-	w_header     = newwin(1, COLUMNS, 0, 0);
-
-	g_max_gn   = COLUMNS - PERC_OF(COLUMNS, (100-g_perc_field_gn));
-	g_max_gen  = COLUMNS - PERC_OF(COLUMNS, (100-g_perc_field_gen));
-	g_max_stat = COLUMNS - PERC_OF(COLUMNS, (100-g_perc_field_stat));
-
-	/* check stdscr size TODO */
+	create_windows();
 }
 
 void
@@ -129,13 +120,33 @@ destroy_tui()
 }
 
 static void
+determinate_fields_size(WINDOW *win)
+{
+	int h, w;
+	getmaxyx(win, h, w);
+	g_max_gn   = w - PERC_OF(w, (100-g_perc_field_gn));
+	g_max_gen  = w - PERC_OF(w, (100-g_perc_field_gen));
+	g_max_stat = w - PERC_OF(w, (100-g_perc_field_stat));
+	/* check stdscr size TODO */
+}
+
+static void
 draw_menu_title(menu_t *menu) {
-	wattron(w_game_list, A_UNDERLINE);
-	whline(menu->main_win, ' ', COLUMNS);
+	determinate_fields_size(menu->main_win);
+	wattron(menu->main_win, A_UNDERLINE);
+	whline(menu->main_win, ' ', menu->cols);
 	mvwprintw(menu->main_win, 0, 0, "%s", cut("Game name", g_max_gn));
 	mvwprintw(menu->main_win, 0, g_max_gn+CENTER(g_max_gen, 5)-1, "%s", cut("Gener", g_max_gen));
 	mvwprintw(menu->main_win, 0, g_max_gn+g_max_gen+CENTER(g_max_stat, 6)-1, "Status");
 	wattroff(menu->main_win, A_UNDERLINE);
+}
+
+static void
+create_windows(void)
+{
+	w_game_list  = newwin(ROWS-2, COLUMNS, 1,      0);
+	w_status_bar = newwin(1,      COLUMNS, ROWS-1, 0);
+	w_header     = newwin(1,      COLUMNS, 0,      0);
 }
 
 menu_t *
@@ -144,6 +155,7 @@ init_game_menu()
 	menu_t *menu;
 	item_t **items = (item_t **)ecalloc(gr_tab.ngames+1, sizeof(item_t *));
 
+	determinate_fields_size(w_game_list);
 	int i;
 	for (i = 0; i < gr_tab.ngames; i++) {
 		items[i] = new_item(estrdup(game_entry(gr_tab.game_rec[i])),
@@ -164,7 +176,6 @@ init_game_menu()
 	/* menu options */
 	set_menu_format(menu, w, h-1);
 
-	/* menu title */
 	draw_menu_title(menu);
 
 	activate_menu(menu);
@@ -188,7 +199,9 @@ destroy_game_menu(menu_t *menu)
 void
 show_header()
 {
-	mvwprintw(w_header, 0, 0, "%s", "menu1 | menu2 | menu3");
+	int h, w;
+	getmaxyx(w_header, h, w);
+	mvwprintw(w_header, 0, CENTER(w, 18), "%s", "GArg game oranizer");
 	
 	wnoutrefresh(w_header);
 }
@@ -292,7 +305,23 @@ menu_move(menu_t *menu, aval_t *a)
 			//if toggled
 				//1 delete inf win
 				//2 unbild info rander
-			wresize(w_game_list, 10, 10);
+			;
+			int h, w;
+			getmaxyx(menu->main_win, h, w);
+			if (menu->doc_active) {
+				wresize(menu->main_win, ROWS-2, COLUMNS);
+				wresize(menu->sub_win, ROWS-1, COLUMNS);
+				menu->doc_active = 0;
+				draw_menu_title(menu);
+				draw_menu_title(menu);
+			} else {
+				wresize(menu->main_win, ROWS-2, 10);
+				wresize(menu->sub_win, ROWS-1, 10);
+				menu->doc_active = 1;
+				draw_menu_title(menu);
+				draw_menu_title(menu);
+			}
+			wnoutrefresh(menu->sub_win);
 			break;
 
 		case EDIT_ITEM:
@@ -306,12 +335,7 @@ menu_move(menu_t *menu, aval_t *a)
 		//scan
 
 		case DELETE_ITEM:
-			{
-			if (menu->items_count == 0) {
-				break;
-			}
 			break;
-			}
 		/*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
 
 		/* addition functionality */
@@ -326,6 +350,5 @@ menu_move(menu_t *menu, aval_t *a)
 			break;
 	}
 
-	wnoutrefresh(w_game_list);
 	return 0;
 }

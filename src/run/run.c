@@ -71,6 +71,7 @@ run()
 
 		show_header();
 		show_status_bar();
+		menu_move(menu, NULL);
 
 		/* EVENT HENDLING */
 		while (poll_event(&event) != -1) {
