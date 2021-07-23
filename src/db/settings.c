@@ -3,7 +3,6 @@
 #include <limits.h>
 
 #include "../utils/eprintf.h"
-#include "../event/garg_event.h"
 #include "dbman.h"
 
 node_t *g_exceptions;

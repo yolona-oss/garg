@@ -19,8 +19,6 @@
 /* vars */
 char g_buf[4096];
 
-int done = 0;
-
 char g_user_db[PATH_MAX];   /* path to specific sqlite db */
 char g_user_path[PATH_MAX]; /* scan path */
 
@@ -45,7 +43,7 @@ cleanup()
 static void
 terminate()
 {
-	done = 1;
+	gtk_main_quit();
 }
 
 static void
@@ -120,7 +118,10 @@ main(int argc, char **argv)
 	}
 
 	/* redirect errors msg to log file */
-	int logf    = open("log", O_WRONLY);
+	char log_path[1000];
+	snprintf(log_path, sizeof(log_path),
+			"%s/.garg.log", getenv("HOME"));
+	int logf = open(log_path, O_WRONLY);
 	if (logf) {
 		dup2(logf, 2);
 	}

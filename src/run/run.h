@@ -2,14 +2,14 @@
 #define _RUN_H_
 
 #include <limits.h>
-#include "menu.h"
+#include <gtk/gtk.h>
+#include <gdk/gdk.h>
 
 /* vars */
-extern int done;
 extern char g_user_path[PATH_MAX];
 
 /* funcs */
-void *resizeHandler(int);
+void quit(GtkWidget *window, gpointer data);
 int run(void);
 
 #endif

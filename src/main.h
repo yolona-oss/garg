@@ -6,8 +6,6 @@
 #include <limits.h>
 
 /* global vars */
-extern int done;
-
 extern char *argv0;
 extern int g_qflag, g_dflag;
 
