@@ -1,5 +1,5 @@
 # GArg
-TUI game orginizer.
+GUI(gtk3)/TUI(ncurses) game orginizer.
 
 ## Table of content
 1. [ Configuration. ](#conf)
@@ -14,12 +14,6 @@ TUI game orginizer.
 ```C
 ```
 <a name="dev"></a>
-## In development capabilities
-- [ ] TUI
-	- [ ] Resizing capability
-- [ ] Advanced search mechanisms
-	- [ ] Built-in specic searcher
-- [ ] Event system
 
 ## TODO
 - 
