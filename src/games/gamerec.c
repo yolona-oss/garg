@@ -16,73 +16,71 @@
 
 /* vars */
 extern game_tab_t gr_tab;
-
 pid_t g_game_pid;
 
 /* funcs */
 static unsigned int gr_make_id(const char *);
-
 static void gr_set_props(game_t *grp, game_prop_t prop);
 static game_prop_t gr_get_props(game_t *grp);
 
 int
 run_game(int id)
 {
-	char *path = gr_tab.game_rec[id].start_point;
+	char *path = grt_find(id)->start_point;
 	char run[strlen(path) + 3];
 
 	esnprintf(run, sizeof(run), "/.%s", path);
+	printf("%s\n", path);
+	fflush(stdout);
 
 	switch (g_game_pid = fork()) {
 		case 0:
-		setsid();
+			setsid();
 
-		/* int devnull = open("/dev/devnull", O_WRONLY); */
-		/* if (!devnull) { */
-		/* 	/1* status text handler TODO *1/ */
-		/* 	break; */
-		/* } */
-		/* dup2(devnull, 1); */
-		/* dup2(devnull, 2); */
+			/* int devnull = open("/dev/devnull", O_WRONLY); */
+			/* if (!devnull) { */
+			/* 	/1* status text handler TODO *1/ */
+			/* 	break; */
+			/* } */
+			/* dup2(devnull, 1); */
+			/* dup2(devnull, 2); */
 
-		char *argv[4];
-		argv[0] = basename(run);
-		argv[1] = NULL;
+			char *argv[2] = { run, NULL};
 
-		execvp(run, argv);
+			execvp(run, argv);
 
-		exit(EXIT_SUCCESS);
-		break;
+			exit(EXIT_SUCCESS);
+			break;
 
 		default:
-		;
-		int status = 0;
-		pid_t wpid;
+			;
+			int status = 0;
+			pid_t wpid;
 
-		do {
-			wpid = waitpid(g_game_pid, &status, WUNTRACED);
+			do {
+				wpid = waitpid(g_game_pid, &status, WUNTRACED);
 
-			if (wpid == -1) {
-				warn("waitpid: ");
-				// show tui message
-				break;
-			}
-
-			if (WIFEXITED(status)) {
-				if (WEXITSTATUS(status)) {
+				if (wpid == -1) {
+					warn("waitpid: ");
 					// show tui message
+					break;
 				}
-			} else {
-				//TODO
-			}
-		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 
-		break;
+				if (WIFEXITED(status)) {
+					if (WEXITSTATUS(status)) {
+						// show tui message
+					}
+				} else {
+					//TODO
+				}
+			} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+
+			break;
 
 		case -1:
-		//log error TODO
-		exit(EXIT_FAILURE);
-		break;
+			//log error TODO
+			exit(EXIT_FAILURE);
+			break;
 	}
 
 	return 0;
@@ -354,12 +352,6 @@ grt_find(int id)
 	}
 
 	return NULL;
-}
-
-int
-gr_id(game_t *gr)
-{
-	return gr->id;
 }
 
 int
