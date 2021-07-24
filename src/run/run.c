@@ -87,7 +87,8 @@ add_game_entry(GtkWidget *w, game_t gr)
 	store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(w)));
 
 	gtk_list_store_append(store, &iter);
-	gtk_list_store_set(store, &iter, ICON_C, "ICON", -1);
+	GtkWidget *img = gtk_image_new_from_file("/home/xewii/projects/garg/image.jpg");
+	gtk_list_store_set(store, &iter, ICON_C, img, -1);
 	gtk_list_store_set(store, &iter, NAME_C, gr.name, -1);
 	gtk_list_store_set(store, &iter, ID_C, gr.id, -1);
 
@@ -97,14 +98,15 @@ add_game_entry(GtkWidget *w, game_t gr)
 static int
 setup_game_entries(GtkWidget *w)
 {
-	GtkCellRenderer *renderer;
+	GtkCellRenderer *renderer, *pixbuf_renderer;
 	GtkTreeViewColumn *name_col, *id_col, *icon_col;
 	GtkListStore *store;
 
 	renderer = gtk_cell_renderer_text_new();
+	pixbuf_renderer = gtk_cell_renderer_pixbuf_new();
 
-	icon_col = gtk_tree_view_column_new_with_attributes("",
-			renderer, "text", ICON_C, NULL);
+	icon_col = gtk_tree_view_column_new_with_attributes("Icon",
+			pixbuf_renderer, "pixbuf", ICON_C, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(w), icon_col);
 
 	name_col = gtk_tree_view_column_new_with_attributes("Name",
@@ -112,11 +114,11 @@ setup_game_entries(GtkWidget *w)
 	gtk_tree_view_append_column(GTK_TREE_VIEW(w), name_col);
 
 	id_col = gtk_tree_view_column_new_with_attributes("ID",
-			renderer, "number", ID_C, NULL);
+			renderer, "text", ID_C, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(w), id_col);
 	gtk_tree_view_column_set_visible(id_col, FALSE);
 
-	store = gtk_list_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_UINT);
+	store = gtk_list_store_new(N_COLUMNS, G_TYPE_OBJECT, G_TYPE_STRING, G_TYPE_UINT);
 
 	gtk_tree_view_set_model(GTK_TREE_VIEW(w),
 			GTK_TREE_MODEL(store));
@@ -158,9 +160,13 @@ view_onRowActivated(GtkTreeView *treeview,
 	model = gtk_tree_view_get_model(treeview);
 	if (gtk_tree_model_get_iter(model, &iter, path))
 	{
+		gchar *name;
+		gtk_tree_model_get(model, &iter, NAME_C, &name, -1);
+		g_print ("Starting %s\n", name);
+		g_free(name);
+
 		guint id;
 		gtk_tree_model_get(model, &iter, ID_C, &id, -1);
-		g_print ("Double-clicked row contains id %d\n", id);
 		run_game(id);
 	}
 }

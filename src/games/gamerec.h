@@ -56,8 +56,6 @@ int gr_delete(int id);
 int gr_is_dup(game_t rec);
 game_t *grt_find(int id);
 
-int gr_id(game_t *gr);
-
 /* utils */
 int grcmp(game_t src, game_t dst);
 game_t *grcpy(game_t *dst, game_t *src);

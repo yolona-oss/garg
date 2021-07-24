@@ -16,12 +16,10 @@
 
 /* vars */
 extern game_tab_t gr_tab;
-
 pid_t g_game_pid;
 
 /* funcs */
 static unsigned int gr_make_id(const char *);
-
 static void gr_set_props(game_t *grp, game_prop_t prop);
 static game_prop_t gr_get_props(game_t *grp);
 
@@ -47,7 +45,7 @@ run_game(int id)
 			/* dup2(devnull, 1); */
 			/* dup2(devnull, 2); */
 
-			char *argv[2] = { basename(run), NULL};
+			char *argv[2] = { run, NULL};
 
 			execvp(run, argv);
 
@@ -354,12 +352,6 @@ grt_find(int id)
 	}
 
 	return NULL;
-}
-
-int
-gr_id(game_t *gr)
-{
-	return gr->id;
 }
 
 int
