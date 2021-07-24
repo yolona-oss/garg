@@ -18,10 +18,9 @@ enum {
 };
 
 /* funcs */
-static void init_game_tab(void);
-/* static gboolean on_key_press(GtkWidget *widget, GdkEventKey *event); */
-
 /* static GtkWidget *setup_menu_bar(); */
+static void init_game_tab(void);
+static GtkWidget *find_child(GtkWidget* parent, const gchar* name);
 static int add_game_entry(GtkWidget *w, game_t gr);
 static int setup_game_entries(GtkWidget *w);
 
@@ -43,25 +42,6 @@ quit(GtkWidget *window, gpointer data)
 	gtk_main_quit();
 }
 
-/* static gboolean */
-/* on_key_press(GtkWidget *widget, GdkEventKey *event) */
-/* { */
-/* 	g_printerr("%s\n", gdk_keyval_name (event->keyval)); */
-/* 	g_printerr("%d\n", event->keyval); */
-
-/* 	if (event->type == GDK_KEY_PRESS) */
-/* 	{ */  
-/* 		switch (event->keyval) */  
-/* 		{ */  
-/* 			case GDK_KEY_q: */
-/* 				g_signal_emit_by_name(widget, "destroy"); */
-/* 				break; */
-/* 		} */  
-/* 	} */
-
-/* 	return TRUE; */
-/* } */
-
 /* static GtkWidget * */
 /* setup_menu_bar(void) */
 /* { */
@@ -78,6 +58,29 @@ quit(GtkWidget *window, gpointer data)
 /* 	return menubar; */
 /* } */
 
+static GtkWidget *
+find_child(GtkWidget* parent, const gchar* name)
+{
+	if (strcasecmp(gtk_widget_get_name((GtkWidget*)parent), (gchar*)name) == 0) { 
+		return parent;
+	}
+	if (GTK_IS_BIN(parent)) {
+		GtkWidget *child = gtk_bin_get_child(GTK_BIN(parent));
+		return find_child(child, name);
+	}
+
+	if (GTK_IS_CONTAINER(parent)) {
+		GList *children = gtk_container_get_children(GTK_CONTAINER(parent));
+		while ((children = g_list_next(children)) != NULL) {
+			GtkWidget* widget = find_child(children->data, name);
+			if (widget != NULL) {
+				return widget;
+			}
+		}
+	}
+	return NULL;
+}
+
 static int
 add_game_entry(GtkWidget *w, game_t gr)
 {
@@ -87,8 +90,9 @@ add_game_entry(GtkWidget *w, game_t gr)
 	store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(w)));
 
 	gtk_list_store_append(store, &iter);
-	GtkWidget *img = gtk_image_new_from_file("/home/xewii/projects/garg/image.jpg");
-	gtk_list_store_set(store, &iter, ICON_C, img, -1);
+	GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file("/home/xewii/projects/garg/image.jpg", NULL);
+	GtkWidget *imgw = gtk_image_new_from_pixbuf(pixbuf);
+	gtk_list_store_set(store, &iter, ICON_C, imgw, -1);
 	gtk_list_store_set(store, &iter, NAME_C, gr.name, -1);
 	gtk_list_store_set(store, &iter, ID_C, gr.id, -1);
 
@@ -135,20 +139,6 @@ setup_game_entries(GtkWidget *w)
 }
 
 void
-show_sel_game_info(GtkWidget *widget, gpointer label) {
-	GtkTreeIter iter;
-	GtkTreeModel *model;
-	gchar *value;
-
-	if (gtk_tree_selection_get_selected(
-				GTK_TREE_SELECTION(widget), &model, &iter)) {
-		gtk_tree_model_get(model, &iter, NAME_C, &value,  -1);
-		gtk_label_set_text(GTK_LABEL(label), value);
-		g_free(value);
-	}
-}
-
-void
 view_onRowActivated(GtkTreeView *treeview,
 					GtkTreePath *path,
 					GtkTreeViewColumn  *col,
@@ -171,6 +161,26 @@ view_onRowActivated(GtkTreeView *treeview,
 	}
 }
 
+void
+show_sel_game_info(GtkWidget *widget, gpointer info_box)
+{
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	gchar *value;
+
+	if (gtk_tree_selection_get_selected(
+				GTK_TREE_SELECTION(widget), &model, &iter)) {
+		gtk_tree_model_get(model, &iter, NAME_C, &value,  -1);
+		gtk_label_set_text(GTK_LABEL(find_child(info_box, "info_box_gamen")), value);
+		g_free(value);
+	}
+}
+
+void
+play_button(GtkWidget *widget, gpointer info_box)
+{
+}
+
 int
 run()
 {
@@ -181,7 +191,6 @@ run()
 			  *wrapper,
 			  *game_list_wrapper,
 			  *info_box,
-			  *info_box_label,
 			  *games_window,
 			  *game_list;
 
@@ -195,6 +204,9 @@ run()
 	main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_container_add(GTK_CONTAINER(window), main_box);
 
+	/* menubar = setup_menu_bar(); */
+	/* gtk_box_pack_start(GTK_BOX(main_box), menubar, FALSE, TRUE, 0); */
+
 	header = gtk_header_bar_new();
 	gtk_header_bar_set_custom_title(GTK_HEADER_BAR(header), gtk_label_new("GArg"));
 	gtk_box_pack_start(GTK_BOX(main_box), header, FALSE, TRUE, 0);
@@ -207,10 +219,38 @@ run()
 	gtk_box_pack_start(GTK_BOX(wrapper), game_list_wrapper, TRUE, TRUE, 0);
 
 	/* Setuping info box */
+	//info_box
+		//info_box_wrapper
+			//info_box_gamen_wrapper
+				//info_box_gamen_label
+			//info_box_tool_box
+				//info_box_play_button
+	GtkWidget *info_box_wrapper,
+			  *info_box_tool_box,
+			  *info_box_gamen_wrapper,
+			  *info_box_gamen_label,
+			  *info_box_play_button;
+
 	info_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	info_box_label = gtk_label_new("info box");
-	gtk_box_pack_start(GTK_BOX(info_box), info_box_label, FALSE, TRUE, 0);
+	info_box_wrapper = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_box_pack_start(GTK_BOX(info_box), info_box_wrapper, FALSE, TRUE, 0);
 	gtk_box_pack_end(GTK_BOX(game_list_wrapper), info_box, FALSE, TRUE, 10);
+
+	info_box_gamen_label = gtk_label_new("game name");
+	gtk_widget_set_name(info_box_gamen_label, "info_box_gamen");
+	info_box_gamen_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_gamen_wrapper, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(info_box_gamen_wrapper), info_box_gamen_label, FALSE, TRUE, 0);
+
+	info_box_play_button = gtk_button_new_with_label("Play");
+	gtk_widget_set_name(info_box_play_button, "info_box_play");
+	info_box_tool_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_tool_box, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(info_box_tool_box), info_box_play_button, FALSE, TRUE, 0);
+
+	/* GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file("/home/xewii/projects/garg/image.jpg", NULL); */
+	/* GtkWidget *imgw = gtk_image_new_from_pixbuf(pixbuf); */
+	/* gtk_box_pack_start(GTK_BOX(info_box), imgw, FALSE, TRUE, 0); */
 
 	/* Setuping scrolled window for games list */
 	games_window = gtk_scrolled_window_new(NULL, NULL);
@@ -227,12 +267,11 @@ run()
 
 	g_signal_connect(G_OBJECT(window), "destroy",
 					 G_CALLBACK(quit), NULL);
-	/* g_signal_connect(G_OBJECT(window), "key-press-event", */
-	/* 				 G_CALLBACK(on_key_press), NULL); */
 
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(game_list));
-	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box_label);
+	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box_wrapper);
 	g_signal_connect(game_list, "row-activated", (GCallback) view_onRowActivated, NULL);
+	g_signal_connect(info_box_play_button, "click", G_CALLBACK(play_button), info_box);
 
 	gtk_widget_show_all(window);
 	gtk_main();
