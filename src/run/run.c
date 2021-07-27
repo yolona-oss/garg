@@ -10,6 +10,10 @@
 #include "../utils/eprintf.h"
 #include "../utils/gtk_widget_list.h"
 
+static const int icon_size_w = 200;
+static const int icon_size_h = 80;
+static const char *game_icon_default = "assets/game-icon.png";
+
 enum {
 	ICON_C = 0,
 	NAME_C,
@@ -61,7 +65,7 @@ quit(GtkWidget *window, gpointer data)
 static GtkWidget *
 find_child(GtkWidget* parent, const gchar* name)
 {
-	if (strcasecmp(gtk_widget_get_name((GtkWidget*)parent), (gchar*)name) == 0) { 
+	if (g_ascii_strcasecmp(gtk_widget_get_name(GTK_WIDGET(parent)), (gchar*)name) == 0) { 
 		return parent;
 	}
 	if (GTK_IS_BIN(parent)) {
@@ -81,6 +85,25 @@ find_child(GtkWidget* parent, const gchar* name)
 	return NULL;
 }
 
+static GdkPixbuf *
+load_icon(game_t gr)
+{
+	GError *error = NULL;
+	char path[PATH_MAX];
+
+	realpath(gr.icon ? gr.icon : game_icon_default, path);
+	GdkPixbuf * pixbuf = gdk_pixbuf_new_from_file_at_size(path, icon_size_w, icon_size_h, &error);
+	if (!pixbuf) {
+		g_assert(error != NULL);
+		warn(G_STRLOC ": unable to open '%s': %s",
+				path, error->message);
+		g_error_free (error);
+		return NULL;
+	}
+
+	return pixbuf;
+}
+
 static int
 add_game_entry(GtkWidget *w, game_t gr)
 {
@@ -90,9 +113,7 @@ add_game_entry(GtkWidget *w, game_t gr)
 	store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(w)));
 
 	gtk_list_store_append(store, &iter);
-	GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file("/home/xewii/projects/garg/image.jpg", NULL);
-	GtkWidget *imgw = gtk_image_new_from_pixbuf(pixbuf);
-	gtk_list_store_set(store, &iter, ICON_C, imgw, -1);
+	gtk_list_store_set(store, &iter, ICON_C, load_icon(gr), -1);
 	gtk_list_store_set(store, &iter, NAME_C, gr.name, -1);
 	gtk_list_store_set(store, &iter, ID_C, gr.id, -1);
 
@@ -102,27 +123,32 @@ add_game_entry(GtkWidget *w, game_t gr)
 static int
 setup_game_entries(GtkWidget *w)
 {
-	GtkCellRenderer *renderer, *pixbuf_renderer;
+	GtkCellRenderer *renderer_name, *renderer_id, *renderer_icon;
 	GtkTreeViewColumn *name_col, *id_col, *icon_col;
 	GtkListStore *store;
 
-	renderer = gtk_cell_renderer_text_new();
-	pixbuf_renderer = gtk_cell_renderer_pixbuf_new();
+	renderer_icon = gtk_cell_renderer_pixbuf_new();
+	renderer_name = gtk_cell_renderer_text_new();
+	renderer_id = gtk_cell_renderer_text_new();
 
-	icon_col = gtk_tree_view_column_new_with_attributes("Icon",
-			pixbuf_renderer, "pixbuf", ICON_C, NULL);
+	icon_col = gtk_tree_view_column_new_with_attributes("",
+			renderer_icon, "pixbuf", ICON_C, NULL);
+	gtk_tree_view_column_set_sizing(GTK_TREE_VIEW_COLUMN (icon_col),
+										GTK_TREE_VIEW_COLUMN_FIXED);
+	gtk_tree_view_column_set_fixed_width(GTK_TREE_VIEW_COLUMN (icon_col), icon_size_w);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(w), icon_col);
 
 	name_col = gtk_tree_view_column_new_with_attributes("Name",
-			renderer, "text", NAME_C, NULL);
+			renderer_name, "text", NAME_C, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(w), name_col);
 
 	id_col = gtk_tree_view_column_new_with_attributes("ID",
-			renderer, "text", ID_C, NULL);
+			renderer_id, "text", ID_C, NULL);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(w), id_col);
 	gtk_tree_view_column_set_visible(id_col, FALSE);
 
-	store = gtk_list_store_new(N_COLUMNS, G_TYPE_OBJECT, G_TYPE_STRING, G_TYPE_UINT);
+	/* store = gtk_list_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_UINT); */
+	store = gtk_list_store_new(N_COLUMNS, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT);
 
 	gtk_tree_view_set_model(GTK_TREE_VIEW(w),
 			GTK_TREE_MODEL(store));
@@ -162,23 +188,31 @@ view_onRowActivated(GtkTreeView *treeview,
 }
 
 void
-show_sel_game_info(GtkWidget *widget, gpointer info_box)
+show_sel_game_info(GtkWidget *widget, gpointer *info_box)
 {
 	GtkTreeIter iter;
 	GtkTreeModel *model;
 	gchar *value;
 
-	if (gtk_tree_selection_get_selected(
-				GTK_TREE_SELECTION(widget), &model, &iter)) {
+	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(widget), &model, &iter)) {
 		gtk_tree_model_get(model, &iter, NAME_C, &value,  -1);
-		gtk_label_set_text(GTK_LABEL(find_child(info_box, "info_box_gamen")), value);
+		/* gtk_label_set_text(GTK_LABEL(find_child(*info_box, "info_box_gamen")), value); */
 		g_free(value);
 	}
 }
 
 void
-play_button(GtkWidget *widget, gpointer info_box)
+play_button(GtkWidget *widget, gpointer *list)
 {
+	GtkTreeIter iter;
+	GtkTreeModel *model;
+	guint id;
+	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(list));
+
+	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &model, &iter)) {
+		gtk_tree_model_get(model, &iter, ID_C, &id,  -1);
+		run_game(id);
+	}
 }
 
 int
@@ -193,6 +227,9 @@ run()
 			  *info_box,
 			  *games_window,
 			  *game_list;
+
+	/* GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file("/home/xewii/projects/garg/image.jpg", NULL); */
+	/* GtkWidget *imgw = gtk_image_new_from_pixbuf(pixbuf); */
 
 	/* Setuping window props */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -248,10 +285,6 @@ run()
 	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_tool_box, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(info_box_tool_box), info_box_play_button, FALSE, TRUE, 0);
 
-	/* GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file("/home/xewii/projects/garg/image.jpg", NULL); */
-	/* GtkWidget *imgw = gtk_image_new_from_pixbuf(pixbuf); */
-	/* gtk_box_pack_start(GTK_BOX(info_box), imgw, FALSE, TRUE, 0); */
-
 	/* Setuping scrolled window for games list */
 	games_window = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(games_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -265,13 +298,13 @@ run()
 	/* Showing game entries */
 	setup_game_entries(game_list);
 
-	g_signal_connect(G_OBJECT(window), "destroy",
-					 G_CALLBACK(quit), NULL);
+	g_signal_connect(G_OBJECT(window), "destroy",G_CALLBACK(quit), NULL);
 
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(game_list));
-	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box_wrapper);
-	g_signal_connect(game_list, "row-activated", (GCallback) view_onRowActivated, NULL);
-	g_signal_connect(info_box_play_button, "click", G_CALLBACK(play_button), info_box);
+	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box_wrapper); //showing info about game in bottom dock
+	g_signal_connect(game_list, "row-activated", G_CALLBACK(view_onRowActivated), NULL);      //double-click on game list entry is running selected game
+	g_signal_connect(info_box_play_button, "clicked", G_CALLBACK(play_button), game_list);    //click on "Play" button running selected game
+	/* gtk_label_set_text(GTK_LABEL(find_child(info_box_wrapper, "info_box_gamen")), "123"); */
 
 	gtk_widget_show_all(window);
 	gtk_main();

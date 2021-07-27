@@ -238,7 +238,7 @@ gr_make_id(const char *str)
 }
 
 game_t *
-gr_init(const char *name, const char *location, const char *sp, const char *uninst)
+gr_init(const char *name, const char *location, const char *sp, const char *uninst, const char *icon)
 {
 	if (!name || !location || !sp) {
 		return NULL;
@@ -255,11 +255,8 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 	grp->location    = estrdup(location);
 	grp->start_point = estrdup(sp);
 
-	if (uninst) {
-		grp->uninstaller = estrdup(uninst);
-	} else {
-		grp->uninstaller = NULL;
-	}
+	grp->uninstaller = (uninst) ? estrdup(uninst) : NULL;
+	grp->icon = (icon) ? estrdup(icon) : NULL;
 
 	if (!grp->location
 			|| !grp->start_point

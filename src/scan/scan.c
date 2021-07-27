@@ -155,7 +155,10 @@ static int
 find_games(const char *path)
 {
 	int i;
-	char *sp = NULL, *uninst = NULL, *game_name;
+	char *sp = NULL,
+		 *uninst = NULL,
+		 *icon = NULL,
+		 *game_name;
 	game_t *gr;
 
 	/* char *(*scanner)(const char *, const char *, int, int func(const char *, const char *)) = NULL; */
@@ -193,8 +196,9 @@ find_games(const char *path)
 		if (sp)
 		{
 			uninst = scan_for(list[i], NULL, g_scan_depth, isUninstaller);
+			icon = scan_for(list[i], NULL, g_scan_depth, isIcon);
 
-			gr = gr_init(game_name, list[i], sp, uninst);
+			gr = gr_init(game_name, list[i], sp, uninst, icon);
 			if (!gr) {
 				continue;
 			}
@@ -208,6 +212,7 @@ find_games(const char *path)
 
 			free(sp);
 			if (uninst) free(uninst);
+			if (icon) free(icon);
 		}
 	}
 
