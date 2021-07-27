@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+/* #include "ftw.h" */
+/* #include "fnmatch.h" */
+/* #include "fts.h" */
 
 #include "../main.h"
 #include "scan.h"
@@ -108,10 +111,10 @@ scan_for(const char *location, const char *game_name, int maxdepth,
 	{
 		if (!isExcludeName(list[i]))
 		{
-			len = strlen(list[i]) + 1;
 			if ((stat = isDirectory(list[i]))) {
 			} else if (stat == 0) {
 				if (check(list[i], game_name)) {
+					len = strlen(list[i]) + 1;
 					ret = (char *)emalloc(len);
 					if (ret) {
 						memcpy(ret, list[i], len);
@@ -123,15 +126,12 @@ scan_for(const char *location, const char *game_name, int maxdepth,
 	}
 
 	if (!ret && maxdepth > 0) {
-		
-		if (!ret) {
-			char **dirl = pp_sort(list, isDirectory);
-			if (dirl) {
-				for (i = 0; dirl[i]; i++) {
-					scan_for(dirl[i], game_name, --maxdepth, check);
-				}
-				free(dirl);
+		char **dirl = pp_sort(list, isDirectory);
+		if (dirl) {
+			for (i = 0; dirl[i]; i++) {
+				scan_for(dirl[i], game_name, --maxdepth, check);
 			}
+			free(dirl);
 		}
 	}
 
@@ -155,15 +155,11 @@ static int
 find_games(const char *path)
 {
 	int i;
+	game_t *gr;
 	char *sp = NULL,
 		 *uninst = NULL,
 		 *icon = NULL,
-		 *game_name;
-	game_t *gr;
-
-	/* char *(*scanner)(const char *, const char *, int, int func(const char *, const char *)) = NULL; */
-
-	/* printf("Finding games...\n"); */
+		 *game_name = NULL;
 
 	char **list = get_file_list(path);
 	if (!list) {
@@ -195,8 +191,8 @@ find_games(const char *path)
 
 		if (sp)
 		{
-			uninst = scan_for(list[i], NULL, g_scan_depth, isUninstaller);
 			icon = scan_for(list[i], NULL, g_scan_depth, isIcon);
+			uninst = scan_for(list[i], NULL, g_scan_depth, isUninstaller);
 
 			gr = gr_init(game_name, list[i], sp, uninst, icon);
 			if (!gr) {
@@ -212,7 +208,9 @@ find_games(const char *path)
 
 			free(sp);
 			if (uninst) free(uninst);
-			if (icon) free(icon);
+			if (icon) {
+				free(icon);
+			}
 		}
 	}
 

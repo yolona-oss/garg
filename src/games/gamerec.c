@@ -257,6 +257,7 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 
 	grp->uninstaller = (uninst) ? estrdup(uninst) : NULL;
 	grp->icon = (icon) ? estrdup(icon) : NULL;
+	/* if (grp->icon) printf("%s\n", grp->icon); */
 
 	if (!grp->location
 			|| !grp->start_point

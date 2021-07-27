@@ -278,8 +278,8 @@ run()
 	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_gamen_wrapper, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(info_box_gamen_wrapper), info_box_gamen_label, FALSE, TRUE, 0);
 
-	/* info_box_play_button = gtk_combo_box_new(); */
-	info_box_play_button = gtk_button_new_with_label("Play");
+	info_box_play_button = gtk_combo_box_new();
+	gtk_combo_box_set_title(GTK_COMBO_BOX(info_box_play_button), "Play");
 	gtk_widget_set_name(info_box_play_button, "info_box_play");
 	info_box_tool_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_tool_box, FALSE, TRUE, 0);
