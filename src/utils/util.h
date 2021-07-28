@@ -45,6 +45,7 @@ int isExecuteble(const char *path);
 int isExcludeName(const char *name);
 int isStartPoint(const char *file, const char *gameName);
 int isUninstaller(const char *file_path, const char *null);
+int isIcon(const char *file_path, const char *null);
 
 char *bprintf(const char *fmt, ...);
 

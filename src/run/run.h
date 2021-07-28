@@ -3,7 +3,6 @@
 
 #include <limits.h>
 #include <gtk/gtk.h>
-#include <gdk/gdk.h>
 
 /* vars */
 extern char g_user_path[PATH_MAX];

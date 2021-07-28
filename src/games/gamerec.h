@@ -48,7 +48,7 @@ void gr_print(game_t *Game);
 
 void check_gr_tab(void);
 
-game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller);
+game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller, const char *icon);
 void gr_edit(game_t *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
 
 int gr_add(game_t *newrec);

@@ -22,7 +22,7 @@ char g_buf[4096];
 char g_user_db[PATH_MAX];   /* path to specific sqlite db */
 char g_user_path[PATH_MAX]; /* scan path */
 
-int g_scan_depth = 1; /* recursion level in scan */
+int g_scan_depth = 3; /* recursion level in scan */
 
 extern node_t *g_exceptions;
 extern node_t *g_inclusions;

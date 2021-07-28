@@ -107,8 +107,8 @@ add_game_entry(GtkWidget *treeview, game_t gr)
 	return 0;
 }
 
-static GtkListStore *
-make_model(GtkWidget *list)
+static int
+setup_game_entries(GtkWidget *w)
 {
 	GtkCellRenderer *renderer_name, *renderer_id, *renderer_icon;
 	GtkTreeViewColumn *name_col, *id_col, *icon_col;
@@ -123,28 +123,21 @@ make_model(GtkWidget *list)
 	gtk_tree_view_column_set_sizing(GTK_TREE_VIEW_COLUMN (icon_col),
 										GTK_TREE_VIEW_COLUMN_FIXED);
 	gtk_tree_view_column_set_fixed_width(GTK_TREE_VIEW_COLUMN (icon_col), icon_size_w);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list), icon_col);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(w), icon_col);
 
 	name_col = gtk_tree_view_column_new_with_attributes("Name",
 			renderer_name, "text", NAME_C, NULL);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list), name_col);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(w), name_col);
 
 	id_col = gtk_tree_view_column_new_with_attributes("ID",
 			renderer_id, "text", ID_C, NULL);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(list), id_col);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(w), id_col);
 	gtk_tree_view_column_set_visible(id_col, FALSE);
 
+	/* store = gtk_list_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_UINT); */
 	store = gtk_list_store_new(N_COLUMNS, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT);
 
-	return store;
-}
-
-static int
-setup_game_entries(GtkWidget *list)
-{
-	GtkListStore *store = make_model(list);
-
-	gtk_tree_view_set_model(GTK_TREE_VIEW(list),
+	gtk_tree_view_set_model(GTK_TREE_VIEW(w),
 			GTK_TREE_MODEL(store));
 
 	g_object_unref(store);
@@ -152,7 +145,7 @@ setup_game_entries(GtkWidget *list)
 	init_game_tab();
 	for (int i = 0; i < gr_tab.ngames; i++)
 	{
-		add_game_entry(list, gr_tab.game_rec[i]);
+		add_game_entry(w, gr_tab.game_rec[i]);
 	}
 
 	return 0;
@@ -285,8 +278,8 @@ run()
 	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_gamen_wrapper, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(info_box_gamen_wrapper), info_box_gamen_label, FALSE, TRUE, 0);
 
-	/* info_box_play_button = gtk_button_new_with_label("Play"); */
 	info_box_play_button = gtk_combo_box_new();
+	gtk_combo_box_set_title(GTK_COMBO_BOX(info_box_play_button), "Play");
 	gtk_widget_set_name(info_box_play_button, "info_box_play");
 	info_box_tool_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_box_pack_start(GTK_BOX(info_box_wrapper), info_box_tool_box, FALSE, TRUE, 0);

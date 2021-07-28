@@ -282,6 +282,33 @@ isUninstaller(const char *file_path, const char *null)
 	return 0;
 }
 
+int
+isIcon(const char *file_path, const char *null)
+{
+	char *name;
+	regex_t regex;
+	name = basename((char *)file_path);
+
+	int rc = regcomp(&regex, "icon", REG_ICASE|REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
+
+	if (rc) {
+		warn("regcomp:");
+		regfree(&regex);
+		return -1;
+	}
+
+	rc = regexec(&regex, name, 0, NULL, 0);
+	
+	if (!rc) {
+		regfree(&regex);
+		return 1;
+	}
+
+	regfree(&regex);
+
+	return 0;
+}
+
 char *
 bprintf(const char *fmt, ...)
 {
