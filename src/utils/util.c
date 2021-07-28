@@ -274,8 +274,6 @@ isUninstaller(const char *file_path, const char *null)
 	
 	if (!rc) {
 		regfree(&regex);
-		printf("%s\n", name);
-		fflush(stdout);
 		return 1;
 	}
 

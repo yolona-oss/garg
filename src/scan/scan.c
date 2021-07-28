@@ -7,10 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
 /* #include "ftw.h" */
 /* #include "fnmatch.h" */
-/* #include "fts.h" */
+#include "fts.h"
 
 #include "../main.h"
 #include "scan.h"
@@ -19,126 +18,9 @@
 #include "../games/gamerec.h"
 #include "../db/dbman.h"
 
-/* funcs */
-/* static int special_id(const char *name); */
-
-static char **get_file_list(const char *path);
-static char *scan_for(const char *location, const char *game_name, int maxdepth, 
-		int func(const char *, const char *));
-static int find_games(const char *path);
-
 /* vars */
 extern struct Gr_tab gr_tab;
 extern int g_scan_depth;
-
-/* const spec_name_t special_names[C_SPEC] = { */ 
-/* 	{ "Steam", scan_steam }, */
-/* }; */
-
-static char **
-get_file_list(const char *path)
-{
-	struct dirent **namelist;
-	char **ret;
-	char *buf;
-
-	char rpath[PATH_MAX];
-	int n, c, len;
-
-	n = scandir(path, &namelist, NULL, alphasort);
-	if (n == -1) {
-		warn("scandir:");
-		return NULL;
-	}
-
-	ret = (char **)ecalloc(n, sizeof(char **));
-	if (!ret) {
-		return NULL;
-	}
-
-	c = 0;
-	while (n--)
-	{
-		if (!isDotName(namelist[n]->d_name)
-				&& realpath((buf=cat_fnames(path, namelist[n]->d_name)), rpath)) {
-			len = strlen(rpath) + 1;
-			ret[c] = (char *)emalloc(sizeof(char *) * len);
-			if (ret[c]) {
-				memcpy(ret[c++], rpath, len);
-			}
-			free(buf);
-		}
-
-		free(namelist[n]);
-	}
-	free(namelist);
-
-	ret[c] = NULL;
-
-	return ret;
-}
-
-/* /1* returns id of specials name *1/ */
-/* /1* or -1 if its not special *1/ */
-/* static int */ 
-/* special_id(const char *name) */
-/* { */
-/* 	int i; */
-/* 	for (i = 0; special_names[i].val; i++) { */
-/* 		if (strcmp(special_names[i].val, name) == 0) { */
-/* 			return i; */
-/* 		} */
-/* 	} */
-
-/* 	return -1; */
-/* } */
-
-static char *
-scan_for(const char *location, const char *game_name, int maxdepth,
-		int check(const char *, const char *))
-{
-	if (!maxdepth) {
-		return 0;
-	}
-
-	int i, stat, len;
-	char *ret = NULL;
-	char **list = NULL;
-
-	list = get_file_list(location);
-
-	for (i = 0; list[i]; i++)
-	{
-		if (!isExcludeName(list[i]))
-		{
-			if ((stat = isDirectory(list[i]))) {
-			} else if (stat == 0) {
-				if (check(list[i], game_name)) {
-					len = strlen(list[i]) + 1;
-					ret = (char *)emalloc(len);
-					if (ret) {
-						memcpy(ret, list[i], len);
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	if (!ret && maxdepth > 0) {
-		char **dirl = pp_sort(list, isDirectory);
-		if (dirl) {
-			for (i = 0; dirl[i]; i++) {
-				scan_for(dirl[i], game_name, --maxdepth, check);
-			}
-			free(dirl);
-		}
-	}
-
-	pp_free(list);
-
-	return ret;
-}
 
 int
 scan_inclusions(const char *location)
@@ -147,83 +29,31 @@ scan_inclusions(const char *location)
 	return 0;
 }
 
-/* Finding games in all directories in "path"
- * with depth 1.
- * Detecting special file names and redirecting 
- * search algorithm to another. */
-static int
-find_games(const char *path)
-{
-	int i;
-	game_t *gr;
-	char *sp = NULL,
-		 *uninst = NULL,
-		 *icon = NULL,
-		 *game_name = NULL;
+/* sp = scan_for(list[i], game_name, g_scan_depth, isStartPoint); */
 
-	char **list = get_file_list(path);
-	if (!list) {
-		return -1;
-	}
+/* if (sp) */
+/* { */
+/* 	icon = scan_for(list[i], NULL, g_scan_depth, isIcon); */
+/* 	uninst = scan_for(list[i], NULL, g_scan_depth, isUninstaller); */
 
-	for (i = 0; list[i]; i++) {
-		if (!isDirectory(list[i])
-			|| isExcludeName(list[i])) {
-			continue;
-		}
+/* 	gr = gr_init(game_name, list[i], sp, uninst, icon); */
+/* 	if (!gr) { */
+/* 		continue; */
+/* 	} */
 
-		game_name = basename(list[i]);
-		if (!game_name) {
-			warn("basename:");
-			continue;
-		}
-
-		/* Scanning Steam dir */
-		/* TODO make its run as function */
-		if (strcmp(game_name, "Steam") == 0) {
-			char *common = cat_fnames(list[i], "steamapps/common");
-			find_games(common);
-			free(common);
-			continue;
-		}
-
-		sp = scan_for(list[i], game_name, g_scan_depth, isStartPoint);
-
-		if (sp)
-		{
-			icon = scan_for(list[i], NULL, g_scan_depth, isIcon);
-			uninst = scan_for(list[i], NULL, g_scan_depth, isUninstaller);
-
-			gr = gr_init(game_name, list[i], sp, uninst, icon);
-			if (!gr) {
-				continue;
-			}
-
-			if (!gr_is_dup(*gr)) {
-				gr_add(gr);
-				free(gr);
-			} else {
-				grp_free(gr);
-			}
-
-			free(sp);
-			if (uninst) free(uninst);
-			if (icon) {
-				free(icon);
-			}
-		}
-	}
-
-	pp_nfree(list, i);
-
-	return 0;
-}
+/* 	if (!gr_is_dup(*gr)) { */
+/* 		gr_add(gr); */
+/* 		free(gr); */
+/* 	} else { */
+/* 		grp_free(gr); */
+/* 	} */
 
 int
 scan(const char *path)
 {
-	char rpath[PATH_MAX];
+	char *rpath = (char *)emalloc(sizeof(char *) * (PATH_MAX+1));
 
+	/* path chekcs */
 	if (!realpath(path, rpath)) {
 		warn("Aborting scan!");
 		return -1;
@@ -234,7 +64,95 @@ scan(const char *path)
 		return -1;
 	}
 
-	find_games(rpath);
+	char *start_point,
+		 *uninstaller,
+		 *icon;
+	char **game_paths, **paths;
+
+	FTSENT *node, *game_node;
+	FTS *game_ftree, *ftree;
+
+	game_t *gr;
+
+	game_paths = (char **)emalloc(sizeof(char **) * 2);
+	paths = (char **)emalloc(sizeof(char **) * 2);
+	game_paths[1] = NULL;
+	paths[0] = rpath;
+	paths[1] = NULL;
+
+	ftree = fts_open(paths, FTS_NOCHDIR, 0);
+	if (!ftree) {
+		warn("fts_open:");
+		return -1;
+	}
+
+	while ((node = fts_read(ftree)))
+	{
+		if (node->fts_level > 0 && node->fts_name[0] == '.') {
+			fts_set(ftree, node, FTS_SKIP);
+		} else if (strcmp(node->fts_path, paths[0]) &&
+				node->fts_info & FTS_D &&
+				node->fts_level < 2)
+			/* going for each dir in rpath in first level */
+		{
+			game_paths[0] = node->fts_path;
+			game_ftree = fts_open(game_paths, FTS_NOCHDIR, 0);
+			if (!game_ftree) {
+				warn("fts_open:");
+				return -1;
+			}
+
+			start_point = uninstaller = icon = NULL;
+			while ((game_node = fts_read(game_ftree)))
+			/* searching for game properties */
+			{
+				if (game_node->fts_name[0] == '.') {
+					fts_set(game_ftree, game_node, FTS_SKIP);
+				}
+				else if (game_node->fts_info & FTS_F &&
+						game_node->fts_level < g_scan_depth)
+				/* cheking if cur file is an game property */
+				{
+					if (!start_point && isStartPoint(game_node->fts_path, node->fts_name)) {
+						start_point = estrdup(game_node->fts_path);
+					}
+					if (!uninstaller && isUninstaller(game_node->fts_path, "")) {
+						uninstaller = estrdup(game_node->fts_path);
+					}
+					if (!icon && isIcon(game_node->fts_path, "")) {
+						icon = estrdup(game_node->fts_path);
+					}
+				}
+			}
+			
+			gr = gr_init(node->fts_name, node->fts_path, start_point, uninstaller, icon);
+			if (!gr) continue;
+			if (!gr_is_dup(*gr)) {
+				gr_add(gr);
+				free(gr);
+			} else {
+				grp_free(gr);
+			}
+
+			if (start_point) free(start_point);
+			if (uninstaller) free(uninstaller);
+			if (icon) free(icon);
+			if (fts_close(game_ftree)) {
+				warn("fts_close:");
+				return -1;
+			}
+		}
+	}
+
+	if (fts_close(ftree)) {
+		warn("fts_close:");
+		return -1;
+	}
+
+	free(game_paths);
+	free(paths);
+	free(rpath);
+
 	db_cache_recs();
 
 	return 0;

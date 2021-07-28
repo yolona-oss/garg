@@ -5,8 +5,8 @@
 #include <limits.h>
 #include <libgen.h>
 
-#include <fcntl.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -234,7 +234,13 @@ gr_make_id(const char *str)
 		ret = 2 * ret + *p;
 	}
 
-	return ret % USHRT_MAX;
+	/* TODO */
+	ret = ret % USHRT_MAX;
+	while (grt_find(ret)) {
+		ret++;
+	}
+	
+	return ret;
 }
 
 game_t *
@@ -361,9 +367,10 @@ grcmp(game_t src, game_t dst)
 		return -1;
 	}
 
-	if (strcmp(src.location, dst.location) == 0 &&
-			strcmp(src.name, dst.name) == 0 &&
-			strcmp(src.start_point, dst.start_point) == 0) {
+	if (src.id == dst.id || (
+				strcmp(src.location, dst.location) == 0 &&
+				strcmp(src.name, dst.name) == 0 &&
+				strcmp(src.start_point, dst.start_point) == 0)) {
 		return 0;
 	}
 
@@ -405,12 +412,9 @@ grdup(game_t *gr)
 	dup->location = estrdup(gr->location);
 	dup->name = estrdup(gr->name);
 	dup->start_point = estrdup(gr->start_point);
-	if (gr->uninstaller) {
-		dup->uninstaller = estrdup(gr->uninstaller);
-	}
-	if (gr->gener) {
-		dup->gener = estrdup(gr->gener);
-	}
+	dup->icon = gr->icon ? estrdup(gr->icon) : NULL;
+	dup->uninstaller = gr->uninstaller ? estrdup(gr->uninstaller) : NULL;
+	dup->gener = gr->gener ? estrdup(gr->gener) : NULL;
 
 	return dup;
 }
