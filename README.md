@@ -1,5 +1,5 @@
 # GArg
-GUI game orginizer.
+GUI game orginizer for Linux (following versions will be compativle with Windows).
 
 ## Table of content
 1. [ Installation. ](#installation)
@@ -9,14 +9,14 @@ GUI game orginizer.
 3. [ In development capabilities. ](#dev)
 
 <a name="installation"></a>
-##Installation
+## Installation
 Run
 ```C
 make install
 ```
 for installing this in your PC.
 <a name="dependenses"></a>
-###Dependenses
+### Dependenses
 + GTK-3.0
 + SQLite
 
@@ -30,4 +30,3 @@ for installing this in your PC.
 <a name="dev"></a>
 
 ## TODO
-- 
