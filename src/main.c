@@ -27,6 +27,8 @@ int g_scan_depth = 3; /* recursion level in scan */
 extern node_t *g_exceptions;
 extern node_t *g_inclusions;
 
+static int g_logf = 0;
+
 /* funcs */
 static void cleanup();
 static void terminate();
@@ -38,6 +40,7 @@ cleanup()
 	list_freeall(g_exceptions);
 	list_freeall(g_inclusions);
 	grt_free(gr_tab);
+	close(g_logf);
 }
 
 static void
@@ -112,18 +115,22 @@ main(int argc, char **argv)
 
 			default:
 				usage();
-				/* TODO */
 				break;
 		}
 	}
 
-	/* redirect errors msg to log file */
-	char log_path[1000];
+	/* redirect errors msgs to log file */
+	char log_path[PATH_MAX];
 	snprintf(log_path, sizeof(log_path),
 			"%s/.garg.log", getenv("HOME"));
-	int logf = open(log_path, O_WRONLY);
-	if (logf) {
-		dup2(logf, 2);
+	g_logf = open(log_path, O_CREAT|O_WRONLY|O_TRUNC, /* open or create and open with 600 mask */
+			S_IRWXU);
+	if (g_logf) {
+		if(dup2(g_logf, 2)) {
+			warn("Cant open log file: %s. dup2:", log_path);
+		}
+	} else {
+		warn("Cant open log file: %s. open:", log_path);
 	}
 
 	int rc = run();

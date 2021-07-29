@@ -38,7 +38,7 @@ db_init(void)
 
 	char *crg = "CREATE TABLE IF NOT EXISTS Games( \
 	 		id INT, \
-			last_time, \
+			last_time INT, \
 	 		play_time INT, \
 	 		name TEXT, \
 	 		icon TEXT, \

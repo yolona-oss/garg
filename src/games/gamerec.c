@@ -4,14 +4,18 @@
 #include <unistd.h>
 #include <limits.h>
 #include <libgen.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include <sqlite3.h>
+
 #include "../utils/util.h"
 #include "../utils/eprintf.h"
+#include "../db/dbman.h"
 #include "gamerec.h"
 
 /* vars */
@@ -23,21 +27,33 @@ static unsigned int gr_make_id(const char *);
 static void gr_set_props(game_t *grp, game_prop_t prop);
 static game_prop_t gr_get_props(game_t *grp);
 
+/* run some game with id 
+ * returns:
+ * 		1  - game is running
+ * 		0  - child stoped
+ * 		-1 - some error */
 int
 run_game(int id)
 {
-	char *path = grt_find(id)->start_point;
+	game_t *gr = grt_find(id);
+	char *path = gr->start_point;
 	char run[strlen(path) + 3];
 
 	esnprintf(run, sizeof(run), "/.%s", path);
-	printf("%s\n", path);
-	fflush(stdout);
+	time_t cur_time = time(NULL);
+	time_t end_time = -1;
 
-	switch (g_game_pid = fork()) {
-		case 0:
-			setsid();
+	/* last time setup */
+	gr->last_time = time(NULL);
 
-			/* int devnull = open("/dev/devnull", O_WRONLY); */
+	g_game_pid = fork();
+	switch (g_game_pid) {
+		case 0: //child
+		{
+			/* setsid(); */
+
+			/* int devnull = open(, O_CREAT|O_WRONLY|O_TRUNC, /1* open or create and open with 600 mask *1/ */
+			/* S_IRWXU); */
 			/* if (!devnull) { */
 			/* 	/1* status text handler TODO *1/ */
 			/* 	break; */
@@ -45,15 +61,16 @@ run_game(int id)
 			/* dup2(devnull, 1); */
 			/* dup2(devnull, 2); */
 
-			char *argv[2] = { run, NULL};
+			/* char *argv[2] = { run, gr->start_argv, NULL}; */
+			char *argv[] = { basename(run), NULL};
 
-			execvp(run, argv);
+			execv(run, argv);
+			return 1;
+		}
+		break;
 
-			exit(EXIT_SUCCESS);
-			break;
-
-		default:
-			;
+		default: //parent
+		{
 			int status = 0;
 			pid_t wpid;
 
@@ -62,24 +79,27 @@ run_game(int id)
 
 				if (wpid == -1) {
 					warn("waitpid: ");
-					// show tui message
 					break;
 				}
 
 				if (WIFEXITED(status)) {
 					if (WEXITSTATUS(status)) {
-						// show tui message
 					}
 				} else {
-					//TODO
 				}
+
 			} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 
-			break;
+			end_time = time(NULL);
+			time_t diff = difftime(end_time, cur_time); /* with cpu word size eq 64 you can play(with recirding) only 292,471,208,677.5 year :__D */
+			play_time_append(gr, diff);
+		}
+		break;
 
 		case -1:
 			//log error TODO
-			exit(EXIT_FAILURE);
+			/* exit(EXIT_FAILURE); */
+			return -1;
 			break;
 	}
 
@@ -147,13 +167,14 @@ grt_free(game_tab_t grt)
 	free(gr_tab.game_rec);
 }
 
+/* TODO */
 void
 gr_print(game_t *Game)
 {
 	if (Game) {
 		printf("\n##########################################\n");
 		printf(" id          - %d\n", Game->id);
-		printf(" play time   - %d\n", Game->play_time.tm_min);
+		/* printf(" play time   - %d\n", Game->play_time); */
 		printf(" name        - %s\n", Game->name);
 		printf(" icon        - %s\n", Game->icon);
 		printf(" gener       - %s\n", Game->gener);
@@ -170,32 +191,30 @@ gr_print(game_t *Game)
 }
 
 static game_prop_t
-gr_get_props(game_t *grp)
+gr_get_props(game_t *gr)
 {
 	game_prop_t prop;
-	if (!grp) {
-		return prop;
-	} 
+	assert(gr);
 
-	if (!isExist(grp->location)) {
+	if (!isExist(gr->location)) {
 		prop.location = 1;
 	} else {
 		prop.location = 0;
 	}
 
-	if (!isStartPoint(grp->start_point, grp->name)) {
+	if (!isStartPoint(gr->start_point, gr->name)) {
 		prop.start_point = 1;
 	} else {
 		prop.start_point = 0;
 	}
 
-	if (grp->uninstaller && !isUninstaller(grp->uninstaller, NULL)) {
+	if (gr->uninstaller && !isUninstaller(gr->uninstaller, NULL)) {
 		prop.uninstaller = 1;
 	} else {
 		prop.uninstaller = 0;
 	}
 	
-	if (grp->icon && !isExist(grp->icon)) {
+	if (gr->icon && !isExist(gr->icon)) {
 		prop.icon = 1;
 	} else {
 		prop.icon = 0;
@@ -254,8 +273,8 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 
 	grp->id        = gr_make_id(name);
 
-	grp->play_time.tm_min = 0;
-	grp->last_time.tm_sec = -1;
+	grp->play_time = 0;
+	grp->last_time = -1;
 
 	grp->name        = estrdup(name);
 	grp->location    = estrdup(location);
@@ -263,7 +282,9 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 
 	grp->uninstaller = (uninst) ? estrdup(uninst) : NULL;
 	grp->icon = (icon) ? estrdup(icon) : NULL;
-	/* if (grp->icon) printf("%s\n", grp->icon); */
+
+	char *gener = "common";
+	grp->gener = estrdup(gener);
 
 	if (!grp->location
 			|| !grp->start_point
@@ -281,7 +302,7 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 }
 
 void
-gr_edit(game_t *grp, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller)
+gr_edit(game_t *grp, long int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller)
 {
 
 }
@@ -417,4 +438,24 @@ grdup(game_t *gr)
 	dup->gener = gr->gener ? estrdup(gr->gener) : NULL;
 
 	return dup;
+}
+
+const char *
+play_time_human(game_t *gr)
+{
+	time_t min = gr->play_time/60;
+	if (min < 120) {
+		return bprintf("%ld mins", min);
+	} else {
+		return bprintf("%ld hours and %ld mins", min/60,
+												 min - (min/60)*60); /* INTEGERS :)) */
+	}
+}
+
+int
+play_time_append(game_t *gr, time_t time)
+{
+	/* TODO add chekc max val ))) */
+	gr->play_time += time;
+	return 0;
 }
