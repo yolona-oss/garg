@@ -17,8 +17,8 @@ struct Gr_prop {
 
 struct Game_rec {
 	unsigned short id;      /* necessary */
-	struct tm play_time;    /* necessary */ /* a total of time playing */
-	struct tm last_time;    /* necessary */ /* last launch time */
+	time_t play_time;       /* necessary */ /* a total of time playing in seconds */
+	time_t last_time;       /* necessary */ /* last launch time */
 	char *name;             /* necessary */
 	char *icon;
 	char *gener;
@@ -49,7 +49,7 @@ void gr_print(game_t *Game);
 void check_gr_tab(void);
 
 game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller, const char *icon);
-void gr_edit(game_t *dst, unsigned int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
+void gr_edit(game_t *dst, long int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
 
 int gr_add(game_t *newrec);
 int gr_delete(int id);
@@ -60,5 +60,8 @@ game_t *grt_find(int id);
 int grcmp(game_t src, game_t dst);
 game_t *grcpy(game_t *dst, game_t *src);
 game_t *grdup(game_t *rec);
+
+const char *play_time_human(game_t *gr);
+int         play_time_append(game_t *gr, time_t time);
 
 #endif

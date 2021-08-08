@@ -57,4 +57,6 @@ int getCountsOfDigits(int n);
 void swap(void *src, void *dst, size_t size);
 void shift_pp(void **pp, int i, int j, size_t size);
 
+char *str_del_last_sym(char *str);
+
 #endif

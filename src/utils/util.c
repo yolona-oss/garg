@@ -407,3 +407,11 @@ shift_pp(void **pp, int i, int j, size_t size)
 		i++;
 	}
 }
+
+char *
+str_del_last_sym(char *str)
+{
+	//TODO
+	str[strlen(str)-1] = '\0';
+	return str;
+}
