@@ -181,33 +181,29 @@ find_child(GtkWidget* parent, const gchar* name)
 }
 
 static GdkPixbuf *
-load_icon(const char *icon_path)
+load_icon(const char *icon_path, const char *fallback, int w, int h)
 {
 	GError *error = NULL;
 	GdkPixbuf *pixbuf = NULL;
 	char path[PATH_MAX];
+	int ffallback = 0;
 
-	realpath(icon_path ? icon_path : game_icon_default,
-			path);
-	pixbuf = gdk_pixbuf_new_from_file_at_size(path, icon_size_w, icon_size_h, &error);
+	if (icon_path)
+		realpath(icon_path, path);
+	else if (fallback) {
+		realpath(fallback, path);
+		ffallback = 1;
+	}
 
-	if (!pixbuf) {
-		/* g_assert(error != NULL); */
-		/* warn(G_STRLOC ": unable to open '%s': %s", */
-		/* 		path, error->message); */
-		/* g_error_free (error); */
+	pixbuf = gdk_pixbuf_new_from_file_at_size(path, w, h, &error);
 
-		//try with default, if specified path to icon in game_t is not exist
-		realpath(game_icon_default, path);
-		pixbuf = gdk_pixbuf_new_from_file_at_size(path, icon_size_w, icon_size_h, &error);
-		if (!pixbuf) {
-			/* g_assert(error != NULL); */
-			/* warn(G_STRLOC ": unable to open '%s': %s", */
-			/* 		path, error->message); */
-			/* g_error_free (error); */
-
-			return NULL;
-		}
+	if (!pixbuf && ffallback == 1) {
+		g_assert(error != NULL);
+		warn(G_STRLOC ": unable to open '%s': %s",
+				path, error->message);
+		g_error_free(error);
+	} else if (fallback == 0 && !pixbuf) {
+		pixbuf = load_icon(NULL, fallback, w, h);
 	}
 
 	return pixbuf;
@@ -290,7 +286,7 @@ setup_game_entries(GtkWidget *list)
 		char *last_time = gr_tab.game_rec[i].last_time ? ctime(&gr_tab.game_rec[i].last_time) : "";
 		if (last_time[0] != '\0') last_time[strlen(last_time)-1] = '\0'; //ctime use \n simbol in end, deleting it
 
-		gtk_list_store_set(store, &iter, ICON_C, load_icon(gr_tab.game_rec[i].icon),
+		gtk_list_store_set(store, &iter, ICON_C, load_icon(gr_tab.game_rec[i].icon, game_icon_default, icon_size_w, icon_size_h),
 										 NAME_C, gr_tab.game_rec[i].name,
 										 GENER_C, gr_tab.game_rec[i].gener ? gr_tab.game_rec[i].gener : "",
 										 LAST_TIME_C, last_time,
@@ -489,19 +485,19 @@ run(void)
 	char *markup;
 
 	GtkWidget *dock_library_list_box_recent = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-	pixbuf = gdk_pixbuf_new_from_file_at_size("assets/clock-50x50.png", icon_dock_menu_w, icon_dock_menu_h, NULL);
+	pixbuf = load_icon("assets/clock-50x50.png", NULL, icon_dock_menu_w, icon_dock_menu_h);
 	gtk_box_pack_start(GTK_BOX(dock_library_list_box_recent), gtk_image_new_from_pixbuf(pixbuf), FALSE, TRUE, 2); 
 	GtkWidget *recent_label = gtk_label_new("Recent");
 	gtk_box_pack_start(GTK_BOX(dock_library_list_box_recent), recent_label, FALSE, TRUE, 0); 
 
 	GtkWidget *dock_library_list_box_games = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-	pixbuf = gdk_pixbuf_new_from_file_at_size("assets/game-64x64.png", icon_dock_menu_w, icon_dock_menu_h, NULL);
+	pixbuf = load_icon("assets/game-64x64.png", NULL, icon_dock_menu_w, icon_dock_menu_h);
 	gtk_box_pack_start(GTK_BOX(dock_library_list_box_games), gtk_image_new_from_pixbuf(pixbuf), FALSE, TRUE, 2); 
 	GtkWidget *games_label = gtk_label_new("Games");
 	gtk_box_pack_start(GTK_BOX(dock_library_list_box_games), games_label, FALSE, TRUE, 0); 
 
 	GtkWidget *dock_library_list_box_favorites = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-	pixbuf = gdk_pixbuf_new_from_file_at_size("assets/favorite-50x50.png", icon_dock_menu_w, icon_dock_menu_h, NULL);
+	pixbuf = load_icon("assets/favorite-50x50.png", NULL, icon_dock_menu_w, icon_dock_menu_h);
 	gtk_box_pack_start(GTK_BOX(dock_library_list_box_favorites), gtk_image_new_from_pixbuf(pixbuf), FALSE, TRUE, 2); 
 	GtkWidget *favorites_label = gtk_label_new("Favorites");
 	gtk_box_pack_start(GTK_BOX(dock_library_list_box_favorites), favorites_label, FALSE, TRUE, 0); 
