@@ -20,6 +20,23 @@ static const int icon_size_h = 80;
 static const int g_dock_min_size_h = 300;
 static const int g_dock_min_size_w = 120;
 
+static GtkEntryBuffer *bgame_name,
+			   *bgame_location,
+			   *bgame_sp,
+			   *bgame_start_arg,
+			   *bgame_uninstaller;
+
+enum {
+	ADD_NEW_GAME_ADD,
+	ADD_NEW_GAME_CLOSE,
+};
+
+enum ADD_NEW_GAME_TRY_FIND {
+	ADD_NEW_GAME_TRY_FIND_SP,
+	ADD_NEW_GAME_TRY_FIND_UNINSTALLER,
+	ADD_NEW_GAME_TRY_FIND_ICON,
+};
+
 enum {
 	ICON_C = 0,
 	NAME_C,
@@ -56,28 +73,60 @@ quit(GtkWidget *window, gpointer data)
 void
 quick_message(GtkWindow *parent, gchar *message)
 {
-	GtkWidget *dialog, *label, *content_area;
-	GtkDialogFlags flags;
+	GtkWidget *dialog;
 
-	flags = GTK_DIALOG_DESTROY_WITH_PARENT;
-	dialog = gtk_dialog_new_with_buttons("Message",
-										parent,
-										flags,
-										"OK",
-										GTK_RESPONSE_NONE,
-										NULL);
-	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-	label = gtk_label_new(message);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(window),
+							GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+							GTK_MESSAGE_INFO,
+							GTK_BUTTONS_OK,
+							"Info message");
+	gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog), "%s", message);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy (dialog);
+}
 
-	// Ensure that the dialog box is destroyed when the user responds
-	g_signal_connect_swapped(dialog,
-							"response",
-							G_CALLBACK (gtk_widget_destroy),
-							dialog);
-	
-	// Add the label, and show everything we’ve added
-	gtk_container_add (GTK_CONTAINER (content_area), label);
-	gtk_widget_show_all (dialog);
+gboolean
+add_new_game_chooser_file_change(GtkFileChooser* self, gpointer user_data)
+{
+	char *loc = gtk_file_chooser_get_filename(self);
+	gtk_entry_buffer_set_text(bgame_location, loc, strlen(loc));
+	gtk_entry_buffer_set_text(bgame_sp, loc, strlen(loc));
+	gtk_entry_buffer_set_text(bgame_uninstaller, loc, strlen(loc));
+
+	g_free(loc);
+
+	return TRUE;
+}
+
+void
+add_new_game_try_find(GtkWindow *widget, enum ADD_NEW_GAME_TRY_FIND point)
+{
+	game_t *gr = NULL;
+	const char *loc = gtk_entry_buffer_get_text(bgame_location);
+
+	if (gtk_entry_buffer_get_length(bgame_location) > 1)
+	{
+		if (isExist(loc))
+		{
+			gr = scan_game_dir("", loc);
+			if (point == ADD_NEW_GAME_TRY_FIND_SP) {
+				gtk_entry_buffer_set_text(bgame_sp, gr->start_point, strlen(gr->start_point));
+			} else if (point == ADD_NEW_GAME_TRY_FIND_UNINSTALLER) {
+				gtk_entry_buffer_set_text(bgame_uninstaller, gr->uninstaller, strlen(gr->uninstaller));
+			}
+		}
+		else
+		{
+			char msg[1000];
+			esnprintf(msg, sizeof(msg),
+					"Directory %s does not exist", loc);
+			quick_message(GTK_WINDOW(window), msg);
+		}
+	}
+	else
+	{
+		quick_message(GTK_WINDOW(window), "First fill in field \"Game root directory\"");
+	}
 }
 
 gboolean
@@ -85,7 +134,16 @@ end_add_new_game_dialog(GtkWidget *dialog,
 						gint respons_id,
 						gpointer data)
 {
-	printf("%d\n", respons_id);
+	if (respons_id == ADD_NEW_GAME_ADD)
+	{
+		
+	} else if (respons_id == ADD_NEW_GAME_CLOSE)
+	{
+
+	} else {
+		quick_message(GTK_WINDOW(window), "some error when adding new game!");
+	}
+
 	gtk_widget_destroy(dialog);
 
 	return TRUE;
@@ -95,27 +153,49 @@ void
 add_new_game_dialog(GtkButton *button,
 					gpointer   data)
 {
+	GtkWidget *header;
 	GtkWidget *dialog,
 			  *content_area,
-			  *main_box;
+			  *main_box,
+			  *game_box;
 	GtkWidget *egame_name,
 			  *egame_location,
 			  *egame_sp,
 			  *egame_start_arg,
 			  *egame_uninstaller;
-	GtkEntryBuffer *bgame_name,
-				   *bgame_location,
-				   *bgame_sp,
-				   *bgame_start_arg,
-				   *bgame_uninstaller;
+	GtkWidget *lgame_name,
+			  *lgame_location,
+			  *lgame_sp,
+			  *lgame_start_arg,
+			  *lgame_uninstaller;
+	GtkWidget *game_frame;
+	GtkWidget *game_grid;
+	GtkWidget *picker;
+	GtkWidget *bgame_sp_finder,
+			  *bgame_uninstaller_finder;
 
-	dialog = gtk_dialog_new();
-	gtk_dialog_add_button(GTK_DIALOG(dialog), "Close", 1);
-	gtk_dialog_add_button(GTK_DIALOG(dialog), "Add", 2);
+	GtkDialogFlags flags;
+	flags = GTK_DIALOG_DESTROY_WITH_PARENT;
+	dialog = gtk_dialog_new_with_buttons("Message",
+										GTK_WINDOW(window),
+										flags,
+										"_Add",
+										ADD_NEW_GAME_ADD,
+										"_Close",
+										ADD_NEW_GAME_CLOSE,
+										NULL);
 
 	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 
-	main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+	header = gtk_header_bar_new();
+	gtk_container_add(GTK_CONTAINER(content_area), header);
+
+	main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	game_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+
+	gtk_container_add(GTK_CONTAINER(dialog), content_area);
+	gtk_container_add(GTK_CONTAINER(content_area), main_box);
+	gtk_box_pack_start(GTK_BOX(main_box), game_box, TRUE, TRUE, 0);
 
 	bgame_name = gtk_entry_buffer_new("", 0);
 	bgame_location = gtk_entry_buffer_new("", 0);
@@ -123,20 +203,77 @@ add_new_game_dialog(GtkButton *button,
 	bgame_uninstaller = gtk_entry_buffer_new("", 0);
 	bgame_start_arg = gtk_entry_buffer_new("", 0);
 
+	lgame_name = gtk_label_new_with_mnemonic("_Name");
+	lgame_location = gtk_label_new_with_mnemonic("_Game root director");
+	lgame_sp = gtk_label_new_with_mnemonic("_Start point");
+	lgame_start_arg = gtk_label_new_with_mnemonic("_Start arguments");
+	lgame_uninstaller = gtk_label_new_with_mnemonic("_Uninstaller");
+	gtk_label_set_xalign(GTK_LABEL(lgame_name), 0);
+	gtk_label_set_xalign(GTK_LABEL(lgame_sp), 0);
+	gtk_label_set_xalign(GTK_LABEL(lgame_location), 0);
+	gtk_label_set_xalign(GTK_LABEL(lgame_start_arg), 0);
+	gtk_label_set_xalign(GTK_LABEL(lgame_uninstaller), 0);
+
 	egame_name = gtk_entry_new_with_buffer(bgame_name);
+	gtk_entry_set_placeholder_text(GTK_ENTRY(egame_name), "Name");
+	gtk_label_set_mnemonic_widget(GTK_LABEL(lgame_name), egame_name);
+
 	egame_location = gtk_entry_new_with_buffer(bgame_location);
+	gtk_entry_set_placeholder_text(GTK_ENTRY(egame_location), "Location");
+	gtk_label_set_mnemonic_widget(GTK_LABEL(lgame_location), egame_location);
+
 	egame_sp = gtk_entry_new_with_buffer(bgame_sp);
+	gtk_entry_set_placeholder_text(GTK_ENTRY(egame_sp), "Start point");
+	gtk_label_set_mnemonic_widget(GTK_LABEL(lgame_sp), egame_sp);
+
 	egame_uninstaller = gtk_entry_new_with_buffer(bgame_uninstaller);
+	gtk_entry_set_placeholder_text(GTK_ENTRY(egame_uninstaller), "Uninstaller");
+	gtk_label_set_mnemonic_widget(GTK_LABEL(lgame_uninstaller), egame_uninstaller);
+
 	egame_start_arg = gtk_entry_new_with_buffer(bgame_start_arg);
+	gtk_entry_set_placeholder_text(GTK_ENTRY(egame_start_arg), "Start arguments");
+	gtk_label_set_mnemonic_widget(GTK_LABEL(lgame_start_arg), egame_start_arg);
 
-	gtk_box_pack_start(GTK_BOX(main_box), egame_name, TRUE, TRUE, 2);
-	gtk_box_pack_start(GTK_BOX(main_box), egame_location, TRUE, TRUE, 2);
-	gtk_box_pack_start(GTK_BOX(main_box), egame_sp, TRUE, TRUE, 2);
-	gtk_box_pack_start(GTK_BOX(main_box), egame_uninstaller, TRUE, TRUE, 2);
-	gtk_box_pack_start(GTK_BOX(main_box), egame_start_arg, TRUE, TRUE, 2);
+	bgame_sp_finder = gtk_button_new_with_label("Try find");
+	bgame_uninstaller_finder = gtk_button_new_with_label("Try find");
+	g_signal_connect(G_OBJECT(bgame_sp_finder), "clicked",
+			G_CALLBACK(add_new_game_try_find), ADD_NEW_GAME_TRY_FIND_SP);
+	g_signal_connect(G_OBJECT(bgame_uninstaller_finder), "clicked",
+			G_CALLBACK(add_new_game_try_find), ADD_NEW_GAME_TRY_FIND_UNINSTALLER);
 
-	gtk_container_add(GTK_CONTAINER(dialog), content_area);
-	gtk_container_add(GTK_CONTAINER(content_area), main_box);
+	picker = gtk_file_chooser_button_new("Select", GTK_FILE_CHOOSER_ACTION_OPEN);
+	gtk_file_chooser_set_action(GTK_FILE_CHOOSER(picker), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
+	g_signal_connect(G_OBJECT(picker), "selection-changed",
+			G_CALLBACK(add_new_game_chooser_file_change), NULL);
+
+	game_frame = gtk_frame_new("Game");
+	gtk_container_set_border_width(GTK_CONTAINER(game_frame), 8);
+	gtk_box_pack_start(GTK_BOX(game_box), game_frame, TRUE, TRUE, 0);
+
+	game_grid = gtk_grid_new();
+	gtk_container_set_border_width(GTK_CONTAINER(game_grid), 8);
+	gtk_container_add(GTK_CONTAINER(game_frame), game_grid);
+
+	gtk_grid_set_row_spacing(GTK_GRID(game_grid), 4);
+	gtk_grid_set_column_spacing(GTK_GRID(game_grid), 10);
+
+	gtk_grid_attach(GTK_GRID(game_grid), lgame_name,		0, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), egame_name,		1, 0, 2, 1);
+
+	gtk_grid_attach(GTK_GRID(game_grid), lgame_location,	0, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), egame_location,	1, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), picker,			2, 1, 1, 1);
+
+	gtk_grid_attach(GTK_GRID(game_grid), lgame_sp,			0, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), egame_sp,			1, 2, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), bgame_sp_finder,	2, 2, 1, 1);
+
+	gtk_grid_attach(GTK_GRID(game_grid), lgame_start_arg,	0, 3, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), egame_start_arg,	1, 3, 2, 1);
+
+	gtk_grid_attach(GTK_GRID(game_grid), lgame_uninstaller,	0, 4, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), egame_uninstaller,	1, 4, 1, 1);
+	gtk_grid_attach(GTK_GRID(game_grid), bgame_uninstaller_finder,	2, 4, 1, 1);
 
 	g_signal_connect_swapped(dialog,
 							"response",
@@ -193,6 +330,8 @@ load_icon(const char *icon_path, const char *fallback, int w, int h)
 	else if (fallback) {
 		realpath(fallback, path);
 		ffallback = 1;
+	} else {
+		return NULL;
 	}
 
 	pixbuf = gdk_pixbuf_new_from_file_at_size(path, w, h, &error);
@@ -418,6 +557,9 @@ run(void)
 			  *info_box,
 			  *games_window;
 
+	/* Shortcuts */
+	GtkShortcutTrigger *trigger = gtk_shortcut_trigger_parse_string("<Control>q");
+
 	/* Setuping window props */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), "GArg");
@@ -430,6 +572,7 @@ run(void)
 
 	/* Setuping header */
 	header = gtk_header_bar_new();
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(header), TRUE);
 	main_search_entry = gtk_search_entry_new();
 	GtkWidget *main_search_bar = gtk_search_bar_new();
 	gtk_search_bar_connect_entry(GTK_SEARCH_BAR(main_search_bar), GTK_ENTRY(main_search_entry));
@@ -440,7 +583,6 @@ run(void)
 
 		//add new game
 	GtkWidget *add_new_game_button = gtk_button_new_from_icon_name("gtk-add", GTK_ICON_SIZE_BUTTON);
-	
 
 		//props
 	GtkWidget *app_options_menu = gtk_button_new_from_icon_name("gtk-properties", GTK_ICON_SIZE_BUTTON);

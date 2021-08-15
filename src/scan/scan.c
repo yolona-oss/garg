@@ -45,6 +45,64 @@ scan_inclusions(const char *location)
 /* 		grp_free(gr); */
 /* 	} */
 
+game_t *
+scan_game_dir(const char *gname, const char *path)
+{
+	game_t *gr = NULL;
+	FTS *game_ftree;
+	FTSENT *game_node;
+
+	char **game_paths = (char **)emalloc(sizeof(char **) * 2);
+	char *start_point,
+		 *uninstaller,
+		 *icon;
+
+	game_paths[0] = (char*)path;
+	game_paths[1] = NULL;
+	game_ftree = fts_open(game_paths, FTS_NOCHDIR, 0);
+
+	if (!game_ftree) {
+		warn("fts_open:");
+		return NULL;
+	}
+
+	start_point = uninstaller = icon = NULL;
+	while ((game_node = fts_read(game_ftree)))
+	/* searching for game properties */
+	{
+		if (game_node->fts_name[0] == '.') {
+			fts_set(game_ftree, game_node, FTS_SKIP);
+		}
+		else if (game_node->fts_info & FTS_F &&
+				game_node->fts_level < g_scan_depth)
+		/* cheking if cur file is an game property */
+		{
+			if (!start_point && isStartPoint(game_node->fts_path, gname)) {
+				start_point = estrdup(game_node->fts_path);
+			}
+			if (!uninstaller && isUninstaller(game_node->fts_path, "")) {
+				uninstaller = estrdup(game_node->fts_path);
+			}
+			if (!icon && isIcon(game_node->fts_path, "")) {
+				icon = estrdup(game_node->fts_path);
+			}
+		}
+	}
+	
+	gr = gr_init(gname, path, start_point, uninstaller, icon);
+
+	if (start_point) free(start_point);
+	if (uninstaller) free(uninstaller);
+	if (icon) free(icon);
+	if (fts_close(game_ftree)) {
+		warn("fts_close:");
+		return NULL;
+	}
+	free(game_paths);
+
+	return gr;
+}
+
 int
 scan(const char *path)
 {
@@ -61,19 +119,13 @@ scan(const char *path)
 		return -1;
 	}
 
-	char *start_point,
-		 *uninstaller,
-		 *icon;
-	char **game_paths, **paths;
-
-	FTSENT *node, *game_node;
-	FTS *game_ftree, *ftree;
-
 	game_t *gr;
+	char **paths;
 
-	game_paths = (char **)emalloc(sizeof(char **) * 2);
+	FTSENT *node;
+	FTS *ftree;
+
 	paths = (char **)emalloc(sizeof(char **) * 2);
-	game_paths[1] = NULL;
 	paths[0] = rpath;
 	paths[1] = NULL;
 
@@ -92,51 +144,13 @@ scan(const char *path)
 				node->fts_level < 2)
 			/* going for each dir in rpath in first level */
 		{
-			game_paths[0] = node->fts_path;
-			game_ftree = fts_open(game_paths, FTS_NOCHDIR, 0);
-			if (!game_ftree) {
-				warn("fts_open:");
-				return -1;
-			}
-
-			start_point = uninstaller = icon = NULL;
-			while ((game_node = fts_read(game_ftree)))
-			/* searching for game properties */
-			{
-				if (game_node->fts_name[0] == '.') {
-					fts_set(game_ftree, game_node, FTS_SKIP);
-				}
-				else if (game_node->fts_info & FTS_F &&
-						game_node->fts_level < g_scan_depth)
-				/* cheking if cur file is an game property */
-				{
-					if (!start_point && isStartPoint(game_node->fts_path, node->fts_name)) {
-						start_point = estrdup(game_node->fts_path);
-					}
-					if (!uninstaller && isUninstaller(game_node->fts_path, "")) {
-						uninstaller = estrdup(game_node->fts_path);
-					}
-					if (!icon && isIcon(game_node->fts_path, "")) {
-						icon = estrdup(game_node->fts_path);
-					}
-				}
-			}
-			
-			gr = gr_init(node->fts_name, node->fts_path, start_point, uninstaller, icon);
+			gr = scan_game_dir(node->fts_name, node->fts_path);
 			if (!gr) continue;
 			if (!gr_is_dup(*gr)) {
 				gr_add(gr);
 				free(gr);
 			} else {
 				grp_free(gr);
-			}
-
-			if (start_point) free(start_point);
-			if (uninstaller) free(uninstaller);
-			if (icon) free(icon);
-			if (fts_close(game_ftree)) {
-				warn("fts_close:");
-				return -1;
 			}
 		}
 	}
@@ -146,7 +160,6 @@ scan(const char *path)
 		return -1;
 	}
 
-	free(game_paths);
 	free(paths);
 	free(rpath);
 

@@ -123,8 +123,8 @@ main(int argc, char **argv)
 	char log_path[PATH_MAX];
 	snprintf(log_path, sizeof(log_path),
 			"%s/.garg.log", getenv("HOME"));
-	g_logf = open(log_path, O_CREAT|O_WRONLY|O_TRUNC, /* open or create and open with 600 mask */
-			S_IRWXU);
+	g_logf = open(log_path, O_CREAT|O_APPEND|O_WRONLY, /* open or create and open with 600 mask */
+			0664);
 	if (g_logf) {
 		if(dup2(g_logf, 2)) {
 			warn("Cant open log file: %s. dup2:", log_path);
