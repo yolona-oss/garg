@@ -11,9 +11,12 @@
 #include "../utils/util.h"
 #include "../utils/gtk_widget_list.h"
 
+static GtkWidget *window = NULL;
+static GtkWidget *game_list = NULL;
+
+static const char *game_icon_default = "assets/game-icon.png";
 static const int icon_size_w = 200;
 static const int icon_size_h = 80;
-static const char *game_icon_default = "assets/game-icon.png";
 static const int g_dock_min_size_h = 300;
 static const int g_dock_min_size_w = 120;
 
@@ -28,7 +31,6 @@ enum {
 };
 
 /* funcs */
-/* static GtkWidget *setup_menu_bar(); */
 static void init_game_tab(void);
 static GtkWidget *find_child(GtkWidget* parent, const gchar* name);
 static int setup_game_entries(GtkWidget *w);
@@ -49,6 +51,109 @@ void
 quit(GtkWidget *window, gpointer data)
 {
 	gtk_main_quit();
+}
+
+void
+quick_message(GtkWindow *parent, gchar *message)
+{
+	GtkWidget *dialog, *label, *content_area;
+	GtkDialogFlags flags;
+
+	flags = GTK_DIALOG_DESTROY_WITH_PARENT;
+	dialog = gtk_dialog_new_with_buttons("Message",
+										parent,
+										flags,
+										"OK",
+										GTK_RESPONSE_NONE,
+										NULL);
+	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	label = gtk_label_new(message);
+
+	// Ensure that the dialog box is destroyed when the user responds
+	g_signal_connect_swapped(dialog,
+							"response",
+							G_CALLBACK (gtk_widget_destroy),
+							dialog);
+	
+	// Add the label, and show everything we’ve added
+	gtk_container_add (GTK_CONTAINER (content_area), label);
+	gtk_widget_show_all (dialog);
+}
+
+gboolean
+end_add_new_game_dialog(GtkWidget *dialog,
+						gint respons_id,
+						gpointer data)
+{
+	printf("%d\n", respons_id);
+	gtk_widget_destroy(dialog);
+
+	return TRUE;
+}
+
+void
+add_new_game_dialog(GtkButton *button,
+					gpointer   data)
+{
+	GtkWidget *dialog,
+			  *content_area,
+			  *main_box;
+	GtkWidget *egame_name,
+			  *egame_location,
+			  *egame_sp,
+			  *egame_start_arg,
+			  *egame_uninstaller;
+	GtkEntryBuffer *bgame_name,
+				   *bgame_location,
+				   *bgame_sp,
+				   *bgame_start_arg,
+				   *bgame_uninstaller;
+
+	dialog = gtk_dialog_new();
+	gtk_dialog_add_button(GTK_DIALOG(dialog), "Close", 1);
+	gtk_dialog_add_button(GTK_DIALOG(dialog), "Add", 2);
+
+	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+	main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+
+	bgame_name = gtk_entry_buffer_new("", 0);
+	bgame_location = gtk_entry_buffer_new("", 0);
+	bgame_sp = gtk_entry_buffer_new("", 0);
+	bgame_uninstaller = gtk_entry_buffer_new("", 0);
+	bgame_start_arg = gtk_entry_buffer_new("", 0);
+
+	egame_name = gtk_entry_new_with_buffer(bgame_name);
+	egame_location = gtk_entry_new_with_buffer(bgame_location);
+	egame_sp = gtk_entry_new_with_buffer(bgame_sp);
+	egame_uninstaller = gtk_entry_new_with_buffer(bgame_uninstaller);
+	egame_start_arg = gtk_entry_new_with_buffer(bgame_start_arg);
+
+	gtk_box_pack_start(GTK_BOX(main_box), egame_name, TRUE, TRUE, 2);
+	gtk_box_pack_start(GTK_BOX(main_box), egame_location, TRUE, TRUE, 2);
+	gtk_box_pack_start(GTK_BOX(main_box), egame_sp, TRUE, TRUE, 2);
+	gtk_box_pack_start(GTK_BOX(main_box), egame_uninstaller, TRUE, TRUE, 2);
+	gtk_box_pack_start(GTK_BOX(main_box), egame_start_arg, TRUE, TRUE, 2);
+
+	gtk_container_add(GTK_CONTAINER(dialog), content_area);
+	gtk_container_add(GTK_CONTAINER(content_area), main_box);
+
+	g_signal_connect_swapped(dialog,
+							"response",
+							G_CALLBACK(end_add_new_game_dialog),
+							dialog);
+
+	gtk_widget_show_all(dialog);
+
+}
+
+void
+gtk_widget_set_margin_around(GtkWidget *widget, gint space)
+{
+	gtk_widget_set_margin_top(widget, space);
+	gtk_widget_set_margin_bottom(widget, space);
+	gtk_widget_set_margin_start(widget, space);
+	gtk_widget_set_margin_end(widget, space);
 }
 
 static GtkWidget *
@@ -76,21 +181,29 @@ find_child(GtkWidget* parent, const gchar* name)
 }
 
 static GdkPixbuf *
-load_icon(game_t gr)
+load_icon(const char *icon_path, const char *fallback, int w, int h)
 {
 	GError *error = NULL;
 	GdkPixbuf *pixbuf = NULL;
 	char path[PATH_MAX];
+	int ffallback = 0;
 
-	realpath(gr.icon ? gr.icon : game_icon_default, path);
-	pixbuf = gdk_pixbuf_new_from_file_at_size(path, icon_size_w, icon_size_h, &error);
+	if (icon_path)
+		realpath(icon_path, path);
+	else if (fallback) {
+		realpath(fallback, path);
+		ffallback = 1;
+	}
 
-	if (!pixbuf) {
+	pixbuf = gdk_pixbuf_new_from_file_at_size(path, w, h, &error);
+
+	if (!pixbuf && ffallback == 1) {
 		g_assert(error != NULL);
 		warn(G_STRLOC ": unable to open '%s': %s",
 				path, error->message);
-		g_error_free (error);
-		return NULL;
+		g_error_free(error);
+	} else if (fallback == 0 && !pixbuf) {
+		pixbuf = load_icon(NULL, fallback, w, h);
 	}
 
 	return pixbuf;
@@ -173,7 +286,7 @@ setup_game_entries(GtkWidget *list)
 		char *last_time = gr_tab.game_rec[i].last_time ? ctime(&gr_tab.game_rec[i].last_time) : "";
 		if (last_time[0] != '\0') last_time[strlen(last_time)-1] = '\0'; //ctime use \n simbol in end, deleting it
 
-		gtk_list_store_set(store, &iter, ICON_C, load_icon(gr_tab.game_rec[i]),
+		gtk_list_store_set(store, &iter, ICON_C, load_icon(gr_tab.game_rec[i].icon, game_icon_default, icon_size_w, icon_size_h),
 										 NAME_C, gr_tab.game_rec[i].name,
 										 GENER_C, gr_tab.game_rec[i].gener ? gr_tab.game_rec[i].gener : "",
 										 LAST_TIME_C, last_time,
@@ -260,20 +373,50 @@ play_button(GtkWidget *widget, gpointer *list)
 	}
 }
 
+static gboolean
+on_key_press_event(GtkWidget *widget,
+				  GdkEvent  *event,
+				  gpointer   user_data)
+{
+	switch (event->key.keyval)
+	{
+		case GDK_KEY_f:
+			if (event->key.state & GDK_CONTROL_MASK) {
+				gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(user_data), TRUE);
+				gtk_window_set_focus(GTK_WINDOW(window), user_data);
+				return gtk_search_bar_handle_event(GTK_SEARCH_BAR(user_data), event);
+			}
+			break;
+
+		case GDK_KEY_Escape:
+			gtk_window_set_focus(GTK_WINDOW(window), game_list);
+			gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(user_data), FALSE);
+			return TRUE;
+			break;
+
+		default:
+		{
+			gtk_window_set_focus(GTK_WINDOW(window), user_data);
+			gtk_search_bar_set_search_mode(GTK_SEARCH_BAR(user_data), TRUE);
+			return gtk_search_bar_handle_event(GTK_SEARCH_BAR(user_data), event);
+		}
+	}
+
+	return FALSE;
+}
+
 int
-run()
+run(void)
 {
 	gtk_init(0, NULL);
-	GtkWidget *window,
-			  *main_box,
+	GtkWidget *main_box,
 			  *header,
 			  *main_search_entry,
 			  *wrapper,
 			  *dock,
 			  *game_list_wrapper,
 			  *info_box,
-			  *games_window,
-			  *game_list;
+			  *games_window;
 
 	/* Setuping window props */
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -288,17 +431,23 @@ run()
 	/* Setuping header */
 	header = gtk_header_bar_new();
 	main_search_entry = gtk_search_entry_new();
+	GtkWidget *main_search_bar = gtk_search_bar_new();
+	gtk_search_bar_connect_entry(GTK_SEARCH_BAR(main_search_bar), GTK_ENTRY(main_search_entry));
+	gtk_widget_set_size_request(main_search_entry, 200, 0);
 	gtk_entry_set_placeholder_text(GTK_ENTRY(main_search_entry), "Search games");
 	gtk_entry_set_alignment(GTK_ENTRY(main_search_entry), 0);
-	/* gint h = 10, */
-	/* 	 ph = 10; */
-	/* gtk_widget_get_preferred_height_and_baseline_for_width(main_search_entry, 100, &h, &ph, 0, 0); */
-	/* gtk_widget_get_preferred_size(main_search_entry, sizereq, sizereq); */
 	gtk_header_bar_set_custom_title(GTK_HEADER_BAR(header), main_search_entry);
 
+		//add new game
 	GtkWidget *add_new_game_button = gtk_button_new_from_icon_name("gtk-add", GTK_ICON_SIZE_BUTTON);
+	
+
+		//props
 	GtkWidget *app_options_menu = gtk_button_new_from_icon_name("gtk-properties", GTK_ICON_SIZE_BUTTON);
-	GtkWidget *list_type_button = gtk_button_new_with_label("change list orient");
+
+		//change list orient
+	GtkWidget *list_type_button = gtk_button_new_with_label("change list orient"); //use flowbox or treeview
+
 	gtk_header_bar_pack_start(GTK_HEADER_BAR(header), add_new_game_button);
 	gtk_header_bar_pack_end(GTK_HEADER_BAR(header), app_options_menu);
 	gtk_header_bar_pack_end(GTK_HEADER_BAR(header), list_type_button);
@@ -311,13 +460,14 @@ run()
 
 	/* dock */
 	dock = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
-	gtk_widget_set_margin_start(dock, 4);
-	gtk_widget_set_margin_end(dock, 4);
+	gtk_container_set_border_width(GTK_CONTAINER(dock), 1);
 	gtk_box_set_homogeneous(GTK_BOX(dock), FALSE);
 	gtk_widget_set_size_request(dock, g_dock_min_size_w, g_dock_min_size_h);
 
 	GtkWidget *dock_library_label = gtk_label_new("Library");
+	gtk_widget_set_margin_around(dock_library_label, 4);
 	gtk_label_set_xalign(GTK_LABEL(dock_library_label), 0);
+
 	PangoAttrList *attr_list = pango_attr_list_new();
 	PangoFontDescription *font_desc = pango_font_description_new();
 	pango_font_description_set_size(font_desc, 14 * PANGO_SCALE);
@@ -327,22 +477,43 @@ run()
 
 	/* dock menu library */
 	GtkWidget *dock_library_list_box = gtk_list_box_new();
-	GtkWidget *dock_library_list_box_recent    = gtk_label_new("Recent");
-	GtkWidget *dock_library_list_box_games     = gtk_label_new("Games");
-	GtkWidget *dock_library_list_box_favorites = gtk_label_new("Favorites");
 
-	gtk_label_set_attributes(GTK_LABEL(dock_library_list_box_games), attr_list);
-	gtk_label_set_attributes(GTK_LABEL(dock_library_list_box_recent), attr_list);
-	gtk_label_set_attributes(GTK_LABEL(dock_library_list_box_favorites), attr_list);
+	int icon_dock_menu_h, icon_dock_menu_w;
+	gtk_icon_size_lookup(GTK_ICON_SIZE_BUTTON, &icon_dock_menu_w, &icon_dock_menu_h);
+	GdkPixbuf *pixbuf = NULL;
+	char const *dock_library_list_label_format = "<span style=\"italic\">\%s</span>";
+	char *markup;
+
+	GtkWidget *dock_library_list_box_recent = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	pixbuf = load_icon("assets/clock-50x50.png", NULL, icon_dock_menu_w, icon_dock_menu_h);
+	gtk_box_pack_start(GTK_BOX(dock_library_list_box_recent), gtk_image_new_from_pixbuf(pixbuf), FALSE, TRUE, 2); 
+	GtkWidget *recent_label = gtk_label_new("Recent");
+	gtk_box_pack_start(GTK_BOX(dock_library_list_box_recent), recent_label, FALSE, TRUE, 0); 
+
+	GtkWidget *dock_library_list_box_games = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	pixbuf = load_icon("assets/game-64x64.png", NULL, icon_dock_menu_w, icon_dock_menu_h);
+	gtk_box_pack_start(GTK_BOX(dock_library_list_box_games), gtk_image_new_from_pixbuf(pixbuf), FALSE, TRUE, 2); 
+	GtkWidget *games_label = gtk_label_new("Games");
+	gtk_box_pack_start(GTK_BOX(dock_library_list_box_games), games_label, FALSE, TRUE, 0); 
+
+	GtkWidget *dock_library_list_box_favorites = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	pixbuf = load_icon("assets/favorite-50x50.png", NULL, icon_dock_menu_w, icon_dock_menu_h);
+	gtk_box_pack_start(GTK_BOX(dock_library_list_box_favorites), gtk_image_new_from_pixbuf(pixbuf), FALSE, TRUE, 2); 
+	GtkWidget *favorites_label = gtk_label_new("Favorites");
+	gtk_box_pack_start(GTK_BOX(dock_library_list_box_favorites), favorites_label, FALSE, TRUE, 0); 
+	markup = g_markup_printf_escaped(dock_library_list_label_format, "Favorites");
+	gtk_label_set_markup(GTK_LABEL(favorites_label), markup);
+	g_free(markup);
+
 	gtk_label_set_xalign(GTK_LABEL(dock_library_list_box_recent), 0);
 	gtk_label_set_xalign(GTK_LABEL(dock_library_list_box_games), 0);
 	gtk_label_set_xalign(GTK_LABEL(dock_library_list_box_favorites), 0);
+	gtk_list_box_insert(GTK_LIST_BOX(dock_library_list_box), dock_library_list_box_games, 0);
+	gtk_list_box_insert(GTK_LIST_BOX(dock_library_list_box), dock_library_list_box_favorites, 1);
+	gtk_list_box_insert(GTK_LIST_BOX(dock_library_list_box), dock_library_list_box_recent, 2);
 
-	gtk_list_box_prepend(GTK_LIST_BOX(dock_library_list_box), dock_library_list_box_favorites);
-	gtk_list_box_prepend(GTK_LIST_BOX(dock_library_list_box), dock_library_list_box_recent);
-	gtk_list_box_prepend(GTK_LIST_BOX(dock_library_list_box), dock_library_list_box_games);
-	gtk_list_box_select_row(dock_library_list_box,
-			gtk_list_box_get_row_at_index(dock_library_list_box, 0));
+	gtk_list_box_select_row(GTK_LIST_BOX(dock_library_list_box),
+			gtk_list_box_get_row_at_index(GTK_LIST_BOX(dock_library_list_box), 0));
 
 	gtk_box_pack_start(GTK_BOX(dock), dock_library_label, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(dock), dock_library_list_box, TRUE, TRUE, 0);
@@ -401,7 +572,6 @@ run()
 
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(game_list), TRUE);
 	gtk_container_add(GTK_CONTAINER(games_window), game_list);
-	/* gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(games_window), game_list); */
 
 	/* Showing game entries */
 	setup_game_entries(game_list);
@@ -412,6 +582,11 @@ run()
 	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box); //showing info about game in bottom dock
 	g_signal_connect(game_list, "row-activated", G_CALLBACK(view_onRowActivated), NULL);      //double-click on game list entry is running selected game
 	g_signal_connect(info_box_play_button, "clicked", G_CALLBACK(play_button), game_list);    //click on "Play" button running selected game
+	g_signal_connect(add_new_game_button, "clicked", G_CALLBACK(add_new_game_dialog), NULL);
+	g_signal_connect(window,
+					 "key-press-event",
+					 G_CALLBACK(on_key_press_event),
+					 main_search_bar);
 
 	gtk_container_set_focus_child(GTK_CONTAINER(window), game_list);
 
