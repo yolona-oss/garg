@@ -8,6 +8,10 @@ GUI game orginizer for Linux (following versions will be compativle with Windows
 	+ [ Syntax. ](#syntax)
 3. [ In development capabilities. ](#dev)
 
+<a name="news"></a>
+## News
+- Project merged from gtk3 to gtk4
+
 <a name="installation"></a>
 ## Installation
 Run

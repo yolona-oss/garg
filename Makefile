@@ -10,7 +10,7 @@ CFLAGS  = -g -c -Wall -xc \
 #-O2 
 
 SOURCES    = src/main.c \
-			 src/run/run.c \
+			 src/run/run.c src/run/dialog.c src/run/util.c \
 			 src/scan/scan.c \
 			 src/games/gamerec.c \
 			 src/utils/util.c src/utils/eprintf.c \

@@ -9,6 +9,8 @@
 extern char *argv0;
 extern int g_qflag, g_dflag;
 
+extern int done;
+
 extern char g_user_db[PATH_MAX];
 extern char g_user_path[PATH_MAX];
 
