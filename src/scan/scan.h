@@ -18,6 +18,7 @@ extern int g_scan_depth;
 
 /* funcs */
 int scan_inclusions(const char *path);
+game_t *scan_game_dir(const char *gname, const char *path);
 int scan(const char *path);
 
 /* special scans */
