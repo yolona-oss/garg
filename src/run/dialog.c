@@ -1,3 +1,5 @@
+#include <glib/gi18n.h>
+
 #include "run.h"
 #include "../scan/scan.h"
 #include "../games/gamerec.h"
@@ -9,11 +11,6 @@ static GtkEntryBuffer *bgame_name,
 			   *bgame_sp,
 			   *bgame_start_arg,
 			   *bgame_uninstaller;
-
-enum {
-	ADD_NEW_GAME_ADD,
-	ADD_NEW_GAME_CLOSE,
-};
 
 enum ADD_NEW_GAME_TRY_FIND {
 	ADD_NEW_GAME_TRY_FIND_SP,
@@ -37,17 +34,35 @@ quick_message(GtkWindow *parent, gchar *message)
 	gtk_widget_show(dialog);
 }
 
-gboolean
-add_new_game_chooser_file_change(GtkFileChooser* self, gpointer user_data)
+void
+info_msg(const char *text)
 {
-	char *loc = gtk_file_chooser_get_current_name(self);
-	gtk_entry_buffer_set_text(bgame_location, loc, strlen(loc));
-	gtk_entry_buffer_set_text(bgame_sp, loc, strlen(loc));
-	gtk_entry_buffer_set_text(bgame_uninstaller, loc, strlen(loc));
+	GtkWidget *message_label;
+	GtkWidget *widget;
+	GtkWidget *grid;
+	GtkInfoBar *bar;
 
-	g_free(loc);
+	// set up info bar
+	widget = gtk_info_bar_new();
+	bar = GTK_INFO_BAR(widget);
+	gtk_box_append(game_list_wrapper, bar);
+	grid = gtk_grid_new();
+	message_label = gtk_label_new("");
+	gtk_info_bar_add_child (bar, message_label);
+	gtk_info_bar_add_button(bar,
+						_("_OK"),
+						GTK_RESPONSE_OK);
+	g_signal_connect(bar,
+					"response",
+					G_CALLBACK(gtk_widget_hide),
+					NULL);
+	gtk_grid_attach(GTK_GRID(grid),
+					widget,
+					0, 2, 1, 1);
 
-	return TRUE;
+	gtk_label_set_text (GTK_LABEL (message_label), text);
+	gtk_info_bar_set_message_type (bar, GTK_MESSAGE_ERROR);
+	gtk_widget_show(GTK_WIDGET(bar));
 }
 
 void
@@ -61,17 +76,21 @@ add_new_game_try_find(GtkWindow *widget, enum ADD_NEW_GAME_TRY_FIND point)
 		if (isExist(loc))
 		{
 			gr = scan_game_dir("", loc);
-			if (point == ADD_NEW_GAME_TRY_FIND_SP) {
-				gtk_entry_buffer_set_text(bgame_sp, gr->start_point, strlen(gr->start_point));
-			} else if (point == ADD_NEW_GAME_TRY_FIND_UNINSTALLER) {
-				gtk_entry_buffer_set_text(bgame_uninstaller, gr->uninstaller, strlen(gr->uninstaller));
+			if (gr) {
+				if (point == ADD_NEW_GAME_TRY_FIND_SP) {
+					gtk_entry_buffer_insert_text(bgame_sp, 0, gr->start_point, strlen(gr->start_point));
+				} else if (point == ADD_NEW_GAME_TRY_FIND_UNINSTALLER) {
+					gtk_entry_buffer_insert_text(bgame_uninstaller, 0, gr->uninstaller, strlen(gr->uninstaller));
+				}
+			} else {
+				info_msg("Nothing found");
 			}
 		}
 		else
 		{
 			char msg[1000];
 			esnprintf(msg, sizeof(msg),
-					"Directory %s does not exist", loc);
+					"Directory \"%s\" does not exist", loc);
 			quick_message(GTK_WINDOW(window), msg);
 		}
 	}
@@ -86,26 +105,78 @@ end_add_new_game_dialog(GtkWidget *dialog,
 						gint respons_id,
 						gpointer data)
 {
-	if (respons_id == ADD_NEW_GAME_ADD)
+	if (respons_id == GTK_RESPONSE_OK)
 	{
-		
-	} else if (respons_id == ADD_NEW_GAME_CLOSE)
+		if (!bgame_name) {
+		} else {
+		}
+		if (!gtk_entry_buffer_get_length(bgame_sp)) {
+		} else {
+			if (!isExist(
+		}
+		if (!bgame_location) {
+		} else {
+		}
+		if (!bgame_start_arg) {
+		} else {
+		}
+		if (!bgame_uninstaller) {
+		} else {
+		}
+	} else if (respons_id == GTK_RESPONSE_CANCEL)
 	{
 
 	} else {
 		quick_message(GTK_WINDOW(dialog), "some error when adding new game!");
 	}
 
-	/* gtk_widget_destroy(dialog); */
+	gtk_window_destroy(GTK_WINDOW(dialog));
 
 	return TRUE;
 }
 
+static void
+add_new_game_chooser_file_change(GtkWidget* self, int response)
+{
+	if (response == GTK_RESPONSE_ACCEPT)
+	{
+		GtkFileChooser *chooser = GTK_FILE_CHOOSER(self);
+		GFile *file = gtk_file_chooser_get_file(chooser);
+		char *loc = g_file_get_path(file);
+		printf("%s\n", loc);
+		gtk_entry_buffer_insert_text(bgame_location, 0, loc, strlen(loc));
+		gtk_entry_buffer_insert_text(bgame_sp, 0, loc, strlen(loc));
+		gtk_entry_buffer_insert_text(bgame_uninstaller, 0, loc, strlen(loc));
+	}
+
+	gtk_window_destroy (GTK_WINDOW (self));
+}
+
+void
+new_filechooser_dialog(GtkWidget *w, GtkWindow *parent)
+{
+	GtkWidget *dialog;
+	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER;
+
+	dialog = gtk_file_chooser_dialog_new("Open File",
+										GTK_WINDOW(parent),
+										action,
+										"_Cancel",
+										GTK_RESPONSE_CANCEL,
+										"_Open",
+										GTK_RESPONSE_ACCEPT,
+										NULL);
+	gtk_widget_show(dialog);
+
+	g_signal_connect(GTK_FILE_CHOOSER(dialog), "response",
+					G_CALLBACK(add_new_game_chooser_file_change),
+					NULL);
+}
+
 void
 add_new_game_dialog(GtkButton *button,
-					gpointer   data)
+					gpointer   parent)
 {
-	GtkWidget *header;
 	GtkWidget *dialog,
 			  *content_area,
 			  *main_box,
@@ -126,21 +197,15 @@ add_new_game_dialog(GtkButton *button,
 	GtkWidget *bgame_sp_finder,
 			  *bgame_uninstaller_finder;
 
-	GtkDialogFlags flags;
-	flags = GTK_DIALOG_DESTROY_WITH_PARENT;
-	dialog = gtk_dialog_new_with_buttons("Message",
-										GTK_WINDOW(data),
-										flags,
-										"_Add",
-										ADD_NEW_GAME_ADD,
-										"_Close",
-										ADD_NEW_GAME_CLOSE,
+	dialog = gtk_dialog_new_with_buttons("Adding new game",
+										GTK_WINDOW(parent),
+										GTK_DIALOG_MODAL| GTK_DIALOG_DESTROY_WITH_PARENT|GTK_DIALOG_USE_HEADER_BAR,
+										_("_Add"), GTK_RESPONSE_OK,
+										_("_Close"), GTK_RESPONSE_CANCEL,
 										NULL);
+	gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
 
 	content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-	header = gtk_header_bar_new();
-	gtk_box_append(GTK_BOX(content_area), header);
 
 	main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	game_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -193,17 +258,16 @@ add_new_game_dialog(GtkButton *button,
 	g_signal_connect(G_OBJECT(bgame_uninstaller_finder), "clicked",
 			G_CALLBACK(add_new_game_try_find), ADD_NEW_GAME_TRY_FIND_UNINSTALLER);
 
-	picker = gtk_file_chooser_widget_new(GTK_FILE_CHOOSER_ACTION_OPEN);
-	gtk_file_chooser_set_action(GTK_FILE_CHOOSER(picker), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
-	g_signal_connect(G_OBJECT(picker), "selection-changed",
-			G_CALLBACK(add_new_game_chooser_file_change), NULL);
+	picker = gtk_button_new_with_label("Choose");
+	g_signal_connect(G_OBJECT(picker), "clicked",
+			G_CALLBACK(new_filechooser_dialog), dialog);
 
 	game_frame = gtk_frame_new("Game");
-	/* gtk_container_set_border_width(GTK_CONTAINER(game_frame), 8); */
+	gtk_widget_set_margin_around(game_frame, 8);
 	gtk_box_append(GTK_BOX(game_box), game_frame);
 
 	game_grid = gtk_grid_new();
-	/* gtk_container_set_border_width(GTK_CONTAINER(game_grid), 8); */
+	gtk_widget_set_margin_around(game_grid, 8);
 	gtk_frame_set_child(GTK_FRAME(game_frame), game_grid);
 
 	gtk_grid_set_row_spacing(GTK_GRID(game_grid), 4);

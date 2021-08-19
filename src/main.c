@@ -128,7 +128,7 @@ main(int argc, char **argv)
 	g_logf = open(log_path, O_CREAT|O_APPEND|O_WRONLY, /* open or create and open with 600 mask */
 			0664);
 	if (g_logf) {
-		if(dup2(g_logf, 2)) {
+		if(dup2(g_logf, 2) < 0) {
 			warn("Cant open log file: %s. dup2:", log_path);
 		}
 	} else {

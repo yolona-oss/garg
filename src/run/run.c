@@ -12,6 +12,7 @@
 #include "../utils/gtk_widget_list.h"
 
 GtkWidget *window = NULL;
+GtkWidget *game_list_wrapper;
 static GtkWidget *game_list = NULL;
 static GtkWidget *info_box_gamen_label;
 
@@ -221,14 +222,13 @@ int
 run(GtkApplication* app,
 	gpointer        user_data)
 {
-	/* gtk_init(); */
+	gtk_init();
 	GtkWidget *main_box,
 			  *header,
 			  *main_search_bar,
 			  *main_search_entry,
 			  *wrapper,
 			  *dock,
-			  *game_list_wrapper,
 			  *info_box,
 			  *games_window;
 
@@ -270,7 +270,6 @@ run(GtkApplication* app,
 	GtkWidget *app_options_menu = gtk_button_new_from_icon_name("open-menu-symbolic");
 
 		//change list orient
-	/* GtkWidget *list_type_button = gtk_button_new_with_label("change list orient"); //use flowbox or treeview */
 	GtkWidget *list_type_button = gtk_button_new_from_icon_name("view-list-ordered-symbolic"); //use flowbox or treeview
 
 	gtk_header_bar_pack_start(GTK_HEADER_BAR(header), add_new_game_button);
@@ -343,31 +342,27 @@ run(GtkApplication* app,
 
 	/* Setuping info box */
 	//info_box
-		//info_box_wrapper
-			//info_box_gamen_wrapper
-				//info_box_gamen_label
-			//info_box_tool_box
-				//info_box_play_button
-	GtkWidget *info_box_wrapper,
-			  *info_box_tool_box,
+		//info_box_gamen_wrapper
+			//info_box_gamen_label
+		//info_box_tool_box
+			//info_box_play_button
+	GtkWidget *info_box_tool_box,
 			  *info_box_gamen_wrapper,
 			  *info_box_play_button;
 
 	info_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	info_box_wrapper = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	gtk_box_append(GTK_BOX(info_box), info_box_wrapper);
-	gtk_box_prepend(GTK_BOX(game_list_wrapper), info_box);
+	gtk_box_append(GTK_BOX(game_list_wrapper), info_box);
 
 	info_box_gamen_label = gtk_label_new("");
 	info_box_gamen_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_box_append(GTK_BOX(info_box_wrapper), info_box_gamen_wrapper);
+	gtk_box_append(GTK_BOX(info_box), info_box_gamen_wrapper);
 	gtk_box_append(GTK_BOX(info_box_gamen_wrapper), info_box_gamen_label);
 
 	info_box_play_button = gtk_button_new_with_label("Play");
 	/* info_box_play_button = gtk_combo_box_new(); */
 	gtk_widget_set_name(info_box_play_button, "info_box_play");
 	info_box_tool_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_box_append(GTK_BOX(info_box_wrapper), info_box_tool_box);
+	gtk_box_append(GTK_BOX(info_box), info_box_tool_box);
 	gtk_box_append(GTK_BOX(info_box_tool_box), info_box_play_button);
 
 	/* Setuping scrolled window for games list */
@@ -395,17 +390,17 @@ run(GtkApplication* app,
 	g_signal_connect(G_OBJECT(window), "destroy",G_CALLBACK(quit), NULL);
 
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(game_list));
-	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box); //showing info about game in bottom dock
-	g_signal_connect(game_list, "row-activated", G_CALLBACK(view_onRowActivated), NULL);      //double-click on game list entry is running selected game
-	g_signal_connect(info_box_play_button, "clicked", G_CALLBACK(play_button), game_list);    //click on "Play" button running selected game
+	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box);		//showing info about game in bottom dock
+	g_signal_connect(game_list, "row-activated", G_CALLBACK(view_onRowActivated), NULL);	//double-click on game list entry is running selected game
+	g_signal_connect(info_box_play_button, "clicked", G_CALLBACK(play_button), game_list);	//click on "Play" button running selected game
 	g_signal_connect(add_new_game_button, "clicked", G_CALLBACK(add_new_game_dialog), window);
 
-	/* gtk_widget_set_focus_child(window, game_list); */
+	gtk_widget_set_focus_child(window, game_list);
 
-	if (!gtk_widget_get_visible (window))
-		gtk_widget_show (window);
+	if (!gtk_widget_get_visible(window))
+		gtk_widget_show(window);
 	else
-		gtk_window_destroy (GTK_WINDOW (window));
+		gtk_window_destroy(GTK_WINDOW(window));
 	gtk_widget_hide(info_box);
 
 /* 	while (!done) */
