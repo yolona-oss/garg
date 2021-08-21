@@ -4,54 +4,54 @@
 
 #include "run.h"
 #include "../main.h"
-#include "../games/gamerec.h"
 #include "../scan/scan.h"
-#include "../db/dbman.h"
 #include "../utils/eprintf.h"
-#include "../utils/util.h"
-#include "../utils/gtk_widget_list.h"
 
+/* struct gapp_t *gapp; */
+
+GtkWidget *info_box_game_name_label;
 GtkWidget *window = NULL;
 GtkWidget *game_list_wrapper;
-static GtkWidget *game_list = NULL;
-static GtkWidget *info_box_gamen_label;
+GtkWidget *game_list;
 
-static const char *game_icon_default = "assets/game-icon.png";
-static const int icon_size_w = 200;
-static const int icon_size_h = 80;
-static const int g_dock_min_size_h = 300;
-static const int g_dock_min_size_w = 120;
-
-enum {
-	ICON_C = 0,
-	NAME_C,
-	GENER_C,
-	LAST_TIME_C,
-	PLAY_TIME_C,
-	ID_C,
-	N_COLUMNS
-};
+const int icon_size_w = 200;
+const int icon_size_h = 80;
+const int g_dock_min_size_h = 300;
+const int g_dock_min_size_w = 120;
 
 /* funcs */
-static void init_game_tab(void);
-static int setup_game_entries(GtkWidget *w);
-
-static void
-init_game_tab(void)
-{
-	db_read_settings();
-	db_read_cached_recs();
-	/* scan_inclusions(); TODO */
-
-	if (g_user_path[0]) {
-		scan(g_user_path);
-	}
-}
+static GtkTreeModel *make_model(GtkWidget *list);
+static void load_css(void);
+static gboolean game_list_sort(GtkTreeModel* model, int column, const char* key, GtkTreeIter* iter, gpointer search_data);
 
 void
 quit(GtkWidget *window, gpointer data)
 {
 	done = 1;
+}
+
+static void
+load_css(void)
+{
+	GtkCssProvider *provider;
+	GdkDisplay *dy = gdk_display_get_default();
+	const char *css_settings = ".gameName { font-size: 120%; font-weight: bold; }";
+	int css_settings_len = strlen(css_settings);
+
+	provider = gtk_css_provider_new();
+	gtk_css_provider_load_from_data(provider, css_settings, css_settings_len);
+	gtk_style_context_add_provider_for_display(dy, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+}
+
+static gboolean
+game_list_sort(GtkTreeModel* model,
+			   int column,
+			   const char* key,
+			   GtkTreeIter* iter,
+			   gpointer search_data)
+{
+	
+	return TRUE;
 }
 
 static GtkTreeModel *
@@ -113,116 +113,10 @@ make_model(GtkWidget *list)
 	return GTK_TREE_MODEL(store);
 }
 
-static int
-setup_game_entries(GtkWidget *list)
-{
-	GtkListStore *store;
-	GtkTreeIter iter;
-	/* GtkTreeModelFilter *filtered; */
-	/* GtkTreeModelSort* sorted; */
-
-	init_game_tab();
-	store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(list)));
-	for (int i = 0; i < gr_tab.ngames; i++)
-	{
-		gtk_list_store_append(store, &iter);
-
-		/* setuping last play time variable */
-		char *last_time = gr_tab.game_rec[i].last_time ? ctime(&gr_tab.game_rec[i].last_time) : "";
-		if (last_time[0] != '\0') last_time[strlen(last_time)-1] = '\0'; //ctime use \n simbol in end, deleting it
-
-		gtk_list_store_set(store, &iter, ICON_C, load_icon(gr_tab.game_rec[i].icon, game_icon_default, icon_size_w, icon_size_h),
-										 NAME_C, gr_tab.game_rec[i].name,
-										 GENER_C, gr_tab.game_rec[i].gener ? gr_tab.game_rec[i].gener : "",
-										 LAST_TIME_C, last_time,
-										 PLAY_TIME_C, play_time_human(&gr_tab.game_rec[i]),
-										 ID_C, gr_tab.game_rec[i].id,
-										 -1);
-	}
-
-	return 0;
-}
-
-static void
-show_sel_game_info(GtkWidget *widget, GtkWidget *info_box)
-{
-	GtkTreeIter iter;
-	GtkTreeModel *model;
-	gchar *value;
-
-	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(widget), &model, &iter)) {
-		gtk_widget_show(info_box);
-		gtk_tree_model_get(model, &iter, NAME_C, &value,  -1);
-		gtk_label_set_text(GTK_LABEL(info_box_gamen_label),
-						   value);
-		g_free(value);
-	}
-}
-
-static void
-view_onRowActivated(GtkTreeView *treeview,
-					GtkTreePath *path,
-					GtkTreeViewColumn  *col,
-					gpointer userdata)
-{
-	GtkTreeModel *model;
-	GtkTreeIter   iter;
-
-	model = gtk_tree_view_get_model(treeview);
-	if (gtk_tree_model_get_iter(model, &iter, path))
-	{
-		gchar *name;
-		gtk_tree_model_get(model, &iter, NAME_C, &name, -1);
-		g_print("Starting %s\n", name);
-		g_free(name);
-
-		guint id;
-		gtk_tree_model_get(model, &iter, ID_C, &id, -1);
-		run_game(id);
-
-		game_t *gr = grt_find(id);
-		/* setuping last play time variable */
-		char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
-		if (last_time[0] != '\0') str_del_last_sym(last_time);
-
-		gtk_list_store_set(GTK_LIST_STORE(model), &iter, LAST_TIME_C, last_time, -1);
-		gtk_list_store_set(GTK_LIST_STORE(model), &iter, PLAY_TIME_C, play_time_human(gr), -1);
-		sqlite3 *db = db_init();
-		db_upd_rec(db, gr);
-	}
-}
-
-static void
-play_button(GtkWidget *widget, gpointer *list)
-{
-	GtkTreeIter iter;
-	GtkTreeModel *model;
-	guint id;
-	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(list));
-
-	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &model, &iter)) {
-		gtk_tree_model_get(model, &iter, ID_C, &id,  -1);
-		run_game(id);
-
-		game_t *gr = grt_find(id);
-		/* setuping last play time variable */
-		char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
-		if (last_time[0] != '\0') str_del_last_sym(last_time);
-
-		gtk_list_store_set(GTK_LIST_STORE(model), &iter, LAST_TIME_C, last_time, -1);
-		gtk_list_store_set(GTK_LIST_STORE(model), &iter, PLAY_TIME_C, play_time_human(gr), -1);
-
-		sqlite3 *db = db_init();
-		db_upd_rec(db, gr);
-		/* gtk_button_set_label(widget, "Stop"); */
-	}
-}
-
 int
 run(GtkApplication* app,
 	gpointer        user_data)
 {
-	gtk_init();
 	GtkWidget *main_box,
 			  *header,
 			  *main_search_bar,
@@ -232,21 +126,24 @@ run(GtkApplication* app,
 			  *info_box,
 			  *games_window;
 
-	/* Shortcuts */
+	gtk_init();
+	load_css();
+
+	/* -- # Shortcuts # -- */
 	/* GtkShortcutTrigger *trigger = gtk_shortcut_trigger_parse_string("<Control>q"); */
 
-	/* Setuping window props */
+	/* -- # Setuping window props # -- */
 	window = gtk_application_window_new(app);
 	gtk_window_set_default_size(GTK_WINDOW(window), 900, 600);
 
 	main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_window_set_child(GTK_WINDOW(window), main_box);
 
-	/* Setuping header */
+	/* -- # Setuping header # -- */
 	header = gtk_header_bar_new();
 	gtk_window_set_titlebar(GTK_WINDOW(window), header);
 
-	//search bar
+	/* -- # search bar # -- */
 	main_search_bar = gtk_search_bar_new();
 	main_search_entry = gtk_search_entry_new();
 	gtk_search_bar_connect_entry(GTK_SEARCH_BAR(main_search_bar), GTK_EDITABLE(main_search_entry));
@@ -257,10 +154,10 @@ run(GtkApplication* app,
 	gtk_search_bar_set_key_capture_widget(GTK_SEARCH_BAR(main_search_bar), window);
 
 	GtkWidget *search_button = gtk_toggle_button_new ();
-	gtk_button_set_icon_name (GTK_BUTTON (search_button), "system-search-symbolic");
+	gtk_button_set_icon_name(GTK_BUTTON (search_button), "system-search-symbolic");
 	g_object_bind_property(search_button, "active",
-						main_search_bar, "search-mode-enabled",
-						G_BINDING_BIDIRECTIONAL);
+						   main_search_bar, "search-mode-enabled",
+						   G_BINDING_BIDIRECTIONAL);
 	gtk_header_bar_pack_start(GTK_HEADER_BAR (header), search_button);
 
 		//add new game
@@ -276,13 +173,13 @@ run(GtkApplication* app,
 	gtk_header_bar_pack_end(GTK_HEADER_BAR(header), app_options_menu);
 	gtk_header_bar_pack_end(GTK_HEADER_BAR(header), list_type_button);
 
-	/* Setuping main part */
+	/* -- # Setuping main box # -- */
 	wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_widget_set_hexpand(wrapper, TRUE);
 	gtk_widget_set_vexpand(wrapper, TRUE);
 	gtk_box_append(GTK_BOX(main_box), wrapper);
 
-	/* dock */
+	/* -- # dock # -- */
 	dock = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
 	gtk_box_set_homogeneous(GTK_BOX(dock), FALSE);
 	gtk_widget_set_size_request(dock, g_dock_min_size_w, g_dock_min_size_h);
@@ -298,10 +195,11 @@ run(GtkApplication* app,
 	pango_attr_list_insert(attr_list, attr);
 	gtk_label_set_attributes(GTK_LABEL(dock_library_label), attr_list);
 
-	/* dock menu library */
+	/* -- # dock menu library # -- */
 	GtkWidget *dock_library_list_box = gtk_list_box_new();
+	gtk_widget_set_vexpand(dock_library_list_box, TRUE);
 
-	int icon_dock_menu_h=8, icon_dock_menu_w=8;
+	int icon_dock_menu_h = 50, icon_dock_menu_w = 50;
 	GdkPixbuf *pixbuf = NULL;
 
 	GtkWidget *dock_library_list_box_recent = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -334,38 +232,31 @@ run(GtkApplication* app,
 	gtk_box_append(GTK_BOX(wrapper), dock);
 	gtk_box_append(GTK_BOX(wrapper), gtk_separator_new(GTK_ORIENTATION_VERTICAL));
 
-	//game list
+	/* -- # game list wrapper # -- */
 	game_list_wrapper = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	gtk_widget_set_hexpand(game_list_wrapper, TRUE);
-	gtk_widget_set_vexpand(game_list_wrapper, TRUE);
 	gtk_box_append(GTK_BOX(wrapper), game_list_wrapper);
 
-	/* Setuping info box */
-	//info_box
-		//info_box_gamen_wrapper
-			//info_box_gamen_label
-		//info_box_tool_box
-			//info_box_play_button
+	/* -- # Setuping info bar # -- */
 	GtkWidget *info_box_tool_box,
-			  *info_box_gamen_wrapper,
 			  *info_box_play_button;
 
 	info_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_widget_set_margin_around(info_box, 10);
 	gtk_box_append(GTK_BOX(game_list_wrapper), info_box);
 
-	info_box_gamen_label = gtk_label_new("");
-	info_box_gamen_wrapper = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-	gtk_box_append(GTK_BOX(info_box), info_box_gamen_wrapper);
-	gtk_box_append(GTK_BOX(info_box_gamen_wrapper), info_box_gamen_label);
+	info_box_game_name_label = gtk_label_new("");
+	gtk_widget_add_css_class(info_box_game_name_label, "gameName");
+	gtk_widget_set_margin_bottom(info_box_game_name_label, 10);
+	gtk_label_set_xalign(GTK_LABEL(info_box_game_name_label), 0);
+	gtk_box_append(GTK_BOX(info_box), info_box_game_name_label);
 
-	info_box_play_button = gtk_button_new_with_label("Play");
-	/* info_box_play_button = gtk_combo_box_new(); */
-	gtk_widget_set_name(info_box_play_button, "info_box_play");
 	info_box_tool_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_box_append(GTK_BOX(info_box), info_box_tool_box);
+	info_box_play_button = gtk_button_new_with_label("Play");
+	/* info_box_play_button = gtk_combo_box_new(); */
 	gtk_box_append(GTK_BOX(info_box_tool_box), info_box_play_button);
 
-	/* Setuping scrolled window for games list */
+	/* -- # Setuping scrolled window for games list # -- */
 	games_window = gtk_scrolled_window_new();
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(games_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_widget_set_hexpand(games_window, TRUE);
@@ -375,36 +266,35 @@ run(GtkApplication* app,
 	/* Initializing game list */
 	game_list = gtk_tree_view_new();
 	GtkTreeModel *store = make_model(game_list);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(game_list),
-			GTK_TREE_MODEL(store));
+	gtk_tree_view_set_model(GTK_TREE_VIEW(game_list), GTK_TREE_MODEL(store));
 	/* gtk_tree_view_set_column_drag_function(GTK_TREE_VIEW(game_list), GtkTreeViewColumnDropFunc, NULL, NULL); */
 	gtk_tree_view_set_search_column(GTK_TREE_VIEW(game_list), NAME_C);
+	gtk_tree_view_set_search_entry(GTK_TREE_VIEW(game_list), GTK_EDITABLE(main_search_entry));
+	gtk_tree_view_set_enable_search(GTK_TREE_VIEW(game_list), TRUE);
+	gtk_tree_view_set_search_equal_func(GTK_TREE_VIEW(game_list), game_list_sort, 0, 0);
 	g_object_unref(store);
 
 	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(game_list), TRUE);
 	gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(games_window), game_list);
 
-	/* Showing game entries */
+	/* -- # Showing game entries # -- */
 	setup_game_entries(game_list);
-
-	g_signal_connect(G_OBJECT(window), "destroy",G_CALLBACK(quit), NULL);
 
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(game_list));
 	g_signal_connect(selection, "changed", G_CALLBACK(show_sel_game_info), info_box);		//showing info about game in bottom dock
-	g_signal_connect(game_list, "row-activated", G_CALLBACK(view_onRowActivated), NULL);	//double-click on game list entry is running selected game
-	g_signal_connect(info_box_play_button, "clicked", G_CALLBACK(play_button), game_list);	//click on "Play" button running selected game
-	g_signal_connect(add_new_game_button, "clicked", G_CALLBACK(add_new_game_dialog), window);
+	g_signal_connect(game_list, "row-activated", G_CALLBACK(game_entry_clicked), NULL);		//double-click on game list entry is running selected game
+	g_signal_connect(info_box_play_button, "clicked", G_CALLBACK(play_button_clicked), game_list);	//click on "Play" button running selected game
+	g_signal_connect(add_new_game_button, "clicked", G_CALLBACK(add_new_game_dialog), window);	//call dialog for adding new game
 
-	gtk_widget_set_focus_child(window, game_list);
+	g_signal_connect(G_OBJECT(window), "destroy",G_CALLBACK(quit), NULL);
+
+	/* gtk_widget_set_focus_child(window, game_list); */
 
 	if (!gtk_widget_get_visible(window))
 		gtk_widget_show(window);
 	else
 		gtk_window_destroy(GTK_WINDOW(window));
 	gtk_widget_hide(info_box);
-
-/* 	while (!done) */
-		/* g_main_context_iteration(window, TRUE); */
 
 	return 0;
 }

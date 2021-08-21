@@ -289,7 +289,7 @@ isIcon(const char *file_path, const char *null)
 	regex_t regex;
 	name = basename((char *)file_path);
 
-	int rc = regcomp(&regex, "icon", REG_ICASE|REG_EXTENDED|REG_NEWLINE|REG_NOSUB);
+	int rc = regcomp(&regex, "icon|.png|.jpg|.jpeg", REG_ICASE|REG_EXTENDED|REG_NEWLINE|REG_NOSUB); //TODO
 
 	if (rc) {
 		warn("regcomp:");

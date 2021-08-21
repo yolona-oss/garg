@@ -6,6 +6,7 @@
 #include "../games/gamerec.h"
 
 sqlite3 *db_init(void);
+int db_close(sqlite3 *db);
 
 int db_length(sqlite3 *db);
 
