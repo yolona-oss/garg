@@ -92,7 +92,7 @@ run_game(int id)
 
 			end_time = time(NULL);
 			time_t diff = difftime(end_time, cur_time); /* with cpu word size eq 64 you can play(with recirding) only 292,471,208,677.5 year :__D */
-			play_time_append(gr, diff);
+			gr_play_time_append(gr, diff);
 		}
 		break;
 
@@ -302,9 +302,19 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 }
 
 void
-gr_edit(game_t *grp, long int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller)
+gr_edit(game_t *grp, game_t *dst)
 {
 
+}
+
+int
+gr_save(game_t *gr)
+{
+	sqlite3 *db = db_init();
+	db_upd_rec(db, gr);
+	db_close(db);
+
+	return 0;
 }
 
 int
@@ -441,7 +451,7 @@ grdup(game_t *gr)
 }
 
 const char *
-play_time_human(game_t *gr)
+gr_play_time_human(game_t *gr)
 {
 	time_t min = gr->play_time/60;
 	if (min < 120) {
@@ -453,9 +463,18 @@ play_time_human(game_t *gr)
 }
 
 int
-play_time_append(game_t *gr, time_t time)
+gr_play_time_append(game_t *gr, time_t time)
 {
 	/* TODO add chekc max val ))) */
 	gr->play_time += time;
 	return 0;
+}
+
+const char *
+gr_last_time_human(game_t *gr)
+{
+	char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
+	if (last_time[0] != '\0') str_del_last_sym(last_time);
+
+	return last_time;
 }

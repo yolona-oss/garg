@@ -17,6 +17,7 @@
 #include "games/gamerec.h"
 
 /* vars */
+int done = 0;
 char g_buf[4096];
 
 char g_user_db[PATH_MAX];   /* path to specific sqlite db */
@@ -46,7 +47,8 @@ cleanup()
 static void
 terminate()
 {
-	gtk_main_quit();
+	cleanup();
+	done = 1;
 }
 
 static void
@@ -126,16 +128,22 @@ main(int argc, char **argv)
 	g_logf = open(log_path, O_CREAT|O_APPEND|O_WRONLY, /* open or create and open with 600 mask */
 			0664);
 	if (g_logf) {
-		if(dup2(g_logf, 2)) {
+		if(dup2(g_logf, 2) < 0) {
 			warn("Cant open log file: %s. dup2:", log_path);
 		}
 	} else {
 		warn("Cant open log file: %s. open:", log_path);
 	}
 
-	int rc = run();
+	GtkApplication *app;
+	int status;
+
+	app = gtk_application_new("org.gtk.garg", G_APPLICATION_FLAGS_NONE);
+	g_signal_connect(app, "activate", G_CALLBACK(run), NULL);
+	status = g_application_run(G_APPLICATION(app), 0, NULL);
+	g_object_unref(app);
 
 	cleanup();
 
-	return rc;
+	return status;
 }

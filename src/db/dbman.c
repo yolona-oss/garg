@@ -77,6 +77,13 @@ db_init(void)
 }
 
 int
+db_close(sqlite3 *db)
+{
+	sqlite3_close(db);
+	return 0;
+}
+
+int
 db_length(sqlite3 *db)
 {
 	return sqlite3_last_insert_rowid(db);
