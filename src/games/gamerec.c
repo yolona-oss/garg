@@ -470,11 +470,11 @@ gr_play_time_append(game_t *gr, time_t time)
 	return 0;
 }
 
-int
+const char *
 gr_last_time_human(game_t *gr)
 {
 	char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
 	if (last_time[0] != '\0') str_del_last_sym(last_time);
 
-	return 0;
+	return last_time;
 }

@@ -63,6 +63,6 @@ game_t *grdup(game_t *rec);
 
 const char *gr_play_time_human(game_t *gr);
 int         gr_play_time_append(game_t *gr, time_t time);
-int         gr_last_time_human(game_t *gr);
+const char *gr_last_time_human(game_t *gr);
 
 #endif

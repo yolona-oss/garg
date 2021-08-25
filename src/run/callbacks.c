@@ -50,8 +50,8 @@ play_button_clicked(GtkWidget *widget, gpointer *list)
 	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &model, &iter)) {
 		id = get_game_id_from_tree_model(model, iter);
 		run_game(id);
-		game_t *gr = grt_find(id);
-		gr_save(gr);
-		tree_store_row_change_val(model, iter, gr);
+		game_t *gr = grt_find(id); 	//TODO
+		gr_save(gr); 				//TODO
+		tree_store_row_change_val(model, iter, gr); //TODO
 	}
 }
