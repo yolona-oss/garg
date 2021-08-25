@@ -26,36 +26,36 @@ struct dock_t {
 };
 
 struct header_t {
+	GtkHeaderBar *bar;
+
 	GtkButton *add_new_game_button;
 	GtkButton *app_options_menu;
 	GtkButton *list_type_button;
 
-	GtkButton *search_button;
-	GtkSearchBar *search_bar;
-	GtkEntry 	 *search_entry;
+	GtkButton      *search_button;
+	GtkSearchBar   *search_bar;
+	GtkSearchEntry *search_entry;
 };
 
 struct gapp_t {
 	GtkWindow *window;
+
 	GtkBox *main_box;
 	GtkBox *wrapper;
 	GtkBox *game_list_wrapper;
 
 	GtkScrolledWindow *games_window;
 	GtkTreeView 	  *game_list;
+	GtkTreeModel      *game_list_store;
 
-	struct header_t   *header;
-	struct dock_t     *dock;
-	struct info_bar_t *info_bar;
+	struct header_t			header;
+	struct dock_t			dock;
+	struct game_info_bar_t  game_info_bar;
 };
 
 /* vars */
 extern char g_user_path[PATH_MAX];
-extern GtkWidget *window;
-extern GtkWidget *game_list_wrapper;
-extern GtkWidget *game_list;
-extern GtkWidget *info_box_game_name_label;
-
+extern struct gapp_t gapp;
 extern const int icon_size_w;
 extern const int icon_size_h;
 extern const int g_dock_min_size_h;
@@ -95,6 +95,9 @@ void gtk_entry_buffer_insert_text_after_delete(GtkEntryBuffer *buffer, int pos, 
 void gtk_widget_set_margin_around(GtkWidget *widget, gint space);
 GdkPixbuf *load_icon(const char *icon_path, const char *fallback, int w, int h);
 
-int setup_game_entries(GtkWidget *list);
+int get_game_id_from_tree_model(GtkTreeModel *model, GtkTreeIter iter);
+int tree_store_row_change_val(GtkTreeModel *model, GtkTreeIter iter, game_t *gr);
+
+int setup_game_entries(GtkTreeView *list);
 
 #endif

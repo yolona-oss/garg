@@ -3,44 +3,19 @@
 #include "../utils/util.h"
 
 void
-show_sel_game_info(GtkWidget *widget, GtkWidget *info_box)
+show_sel_game_info(GtkWidget *section, GtkWidget *info_box)
 {
 	GtkTreeIter iter;
 	GtkTreeModel *model;
 	gchar *value;
 
-	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(widget), &model, &iter)) {
+	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(section), &model, &iter)) {
 		gtk_widget_show(info_box);
 		gtk_tree_model_get(model, &iter, NAME_C, &value,  -1);
-		gtk_label_set_text(GTK_LABEL(info_box_game_name_label),
+		gtk_label_set_text(gapp.game_info_bar.game_name,
 						   value);
 		g_free(value);
 	}
-}
-
-static int
-get_game_id(GtkTreeModel *model, GtkTreeIter iter)
-{
-	guint id;
-	gtk_tree_model_get(model, &iter, ID_C, &id,  -1);
-
-	return id;
-}
-
-static void
-post_run_game(GtkTreeModel *model, GtkTreeIter iter, int id)
-{
-	game_t *gr = grt_find(id);
-	/* setuping last play time variable */
-	char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
-	if (last_time[0] != '\0') str_del_last_sym(last_time);
-
-	gtk_list_store_set(GTK_LIST_STORE(model), &iter, LAST_TIME_C, last_time, -1);
-	gtk_list_store_set(GTK_LIST_STORE(model), &iter, PLAY_TIME_C, play_time_human(gr), -1);
-
-	sqlite3 *db = db_init();
-	db_upd_rec(db, gr);
-	db_close(db);
 }
 
 void
@@ -56,14 +31,11 @@ game_entry_clicked(GtkTreeView *treeview,
 	model = gtk_tree_view_get_model(treeview);
 	if (gtk_tree_model_get_iter(model, &iter, path))
 	{
-		gchar *name;
-		gtk_tree_model_get(model, &iter, NAME_C, &name, -1);
-		g_print("Starting %s\n", name);
-		g_free(name);
-
-		id = get_game_id(model, iter);
+		id = get_game_id_from_tree_model(model, iter);
 		run_game(id);
-		post_run_game(model, iter, id);
+		game_t *gr = grt_find(id);
+		gr_save(gr);
+		tree_store_row_change_val(model, iter, gr);
 	}
 }
 
@@ -76,8 +48,10 @@ play_button_clicked(GtkWidget *widget, gpointer *list)
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(list));
 
 	if (gtk_tree_selection_get_selected(GTK_TREE_SELECTION(selection), &model, &iter)) {
-		id = get_game_id(model, iter);
+		id = get_game_id_from_tree_model(model, iter);
 		run_game(id);
-		post_run_game(model, iter, id);
+		game_t *gr = grt_find(id);
+		gr_save(gr);
+		tree_store_row_change_val(model, iter, gr);
 	}
 }

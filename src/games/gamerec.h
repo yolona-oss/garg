@@ -7,7 +7,6 @@
 typedef struct Game_rec game_t;
 typedef struct Gr_tab game_tab_t;
 typedef struct Gr_prop game_prop_t;
-
 struct Gr_prop {
 	unsigned location: 1;    /* 0 - normal, 1 - incorrect path */
 	unsigned icon: 1;        /* 0 - normal, 1 - incorrect path */
@@ -49,7 +48,8 @@ void gr_print(game_t *Game);
 void check_gr_tab(void);
 
 game_t *gr_init(const char *name, const char *location, const char *sp, const char *unistaller, const char *icon);
-void gr_edit(game_t *dst, long int play_time, const char *name, const char *gener, const char *location, const char *sp, const char *unistaller);
+void gr_edit(game_t *src, game_t *newvals);
+int gr_save(game_t *gr);
 
 int gr_add(game_t *newrec);
 int gr_delete(int id);
@@ -61,7 +61,8 @@ int grcmp(game_t src, game_t dst);
 game_t *grcpy(game_t *dst, game_t *src);
 game_t *grdup(game_t *rec);
 
-const char *play_time_human(game_t *gr);
-int         play_time_append(game_t *gr, time_t time);
+const char *gr_play_time_human(game_t *gr);
+int         gr_play_time_append(game_t *gr, time_t time);
+int         gr_last_time_human(game_t *gr);
 
 #endif

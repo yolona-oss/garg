@@ -67,7 +67,7 @@ info_msg(const char *text)
 	// set up info bar
 	widget = gtk_info_bar_new();
 	bar = GTK_INFO_BAR(widget);
-	gtk_box_prepend(GTK_BOX(game_list_wrapper), GTK_WIDGET(bar));
+	gtk_box_prepend(gapp.game_list_wrapper, GTK_WIDGET(bar));
 	grid = gtk_grid_new();
 	message_label = gtk_label_new("");
 	gtk_info_bar_add_child(bar, message_label);
@@ -123,12 +123,12 @@ add_new_game_try_find(GtkWidget *widget, enum ADD_NEW_GAME_TRY_FIND point)
 			char msg[1000];
 			esnprintf(msg, sizeof(msg),
 					"Directory \"%s\" does not exist", loc);
-			quick_message(GTK_WINDOW(window), msg);
+			quick_message(gapp.window, msg);
 		}
 	}
 	else
 	{
-		quick_message(GTK_WINDOW(window), "First fill in field \"Game root directory\"");
+		quick_message(gapp.window, "First fill in field \"Game root directory\"");
 	}
 
 	gtk_button_set_label(GTK_BUTTON(widget), "Try find"); //TODO
@@ -385,11 +385,11 @@ add_new_game_dialog(GtkButton *button,
 	bgame_uninstaller_finder	= gtk_button_new_with_label("Try find");
 	bgame_icon_finder			= gtk_button_new_with_label("Try find");
 	g_signal_connect(G_OBJECT(bgame_sp_finder), "clicked",
-			G_CALLBACK(add_new_game_try_find), ADD_NEW_GAME_TRY_FIND_SP);
+			G_CALLBACK(add_new_game_try_find), (gpointer*)ADD_NEW_GAME_TRY_FIND_SP);
 	g_signal_connect(G_OBJECT(bgame_uninstaller_finder), "clicked",
-			G_CALLBACK(add_new_game_try_find), ADD_NEW_GAME_TRY_FIND_UNINSTALLER);
+			G_CALLBACK(add_new_game_try_find), (gpointer*)ADD_NEW_GAME_TRY_FIND_UNINSTALLER);
 	g_signal_connect(G_OBJECT(bgame_icon_finder), "clicked",
-			G_CALLBACK(add_new_game_try_find), ADD_NEW_GAME_TRY_FIND_ICON);
+			G_CALLBACK(add_new_game_try_find), (gpointer*)ADD_NEW_GAME_TRY_FIND_ICON);
 
 	picker = gtk_button_new_with_label("Choose");
 	g_signal_connect(G_OBJECT(picker), "clicked",

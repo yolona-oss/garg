@@ -5,6 +5,7 @@
 #include "../games/gamerec.h"
 #include "../scan/scan.h"
 #include "../db/dbman.h"
+#include "../utils/util.h"
 
 static void init_game_tab(void);
 static const char *game_icon_default = "assets/game-icon.png";
@@ -21,22 +22,41 @@ init_game_tab(void)
 	}
 }
 
+int
+tree_store_row_change_val(GtkTreeModel *model, GtkTreeIter iter, game_t *gr)
+{
+	gtk_list_store_set(GTK_LIST_STORE(model), &iter, //TODO
+					   /* ICON_C, gr->icon, */
+					   NAME_C, gr->name,
+					   LAST_TIME_C, gr_last_time_human(gr),
+					   PLAY_TIME_C, gr_play_time_human(gr),
+					   GENER_C, gr->gener ? gr->gener : "",
+					   -1);
+	return 0;
+}
+
+int
+get_game_id_from_tree_model(GtkTreeModel *model, GtkTreeIter iter)
+{
+	guint id;
+	gtk_tree_model_get(model, &iter, ID_C, &id,  -1);
+
+	return id;
+}
+
 void
 add_new_game(GtkListStore *store, game_t *gr)
 {
 	GtkTreeIter iter;
-	/* setuping last play time variable */
-	char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
-	if (last_time[0] != '\0') last_time[strlen(last_time)-1] = '\0'; //ctime use \n simbol in end, deleting it
 
 	GdkPixbuf *pixbuf = load_icon(gr->icon, game_icon_default, icon_size_w, icon_size_h);
-
+	
 	gtk_list_store_append(store, &iter);
 	gtk_list_store_set(store, &iter, ICON_C, pixbuf,
 									 NAME_C, gr->name,
 									 GENER_C, gr->gener ? gr->gener : "",
-									 LAST_TIME_C, last_time,
-									 PLAY_TIME_C, play_time_human(gr),
+									 LAST_TIME_C, gr_last_time_human(gr),
+									 PLAY_TIME_C, gr_play_time_human(gr),
 									 ID_C, gr->id,
 									 -1);
 	g_object_unref(pixbuf);
@@ -45,12 +65,12 @@ add_new_game(GtkListStore *store, game_t *gr)
 void
 add_new_game_short(game_t *gr)
 {
-	GtkListStore *store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(game_list)));
+	GtkListStore *store = GTK_LIST_STORE(gtk_tree_view_get_model(gapp.game_list));
 	add_new_game(store, gr);
 }
 
 int
-setup_game_entries(GtkWidget *list)
+setup_game_entries(GtkTreeView *list)
 {
 	GtkListStore *store;
 
