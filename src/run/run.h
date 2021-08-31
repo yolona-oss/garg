@@ -91,6 +91,9 @@ void add_new_game_dialog(GtkButton *button, gpointer window);
 void info_msg(const char *text);
 
 //utils
+int run_game(int id);
+void init_rgi(void);
+
 void gtk_entry_buffer_insert_text_after_delete(GtkEntryBuffer *buffer, int pos, const char *text, int len);
 void gtk_widget_set_margin_around(GtkWidget *widget, gint space);
 GdkPixbuf *load_icon(const char *icon_path, const char *fallback, int w, int h);

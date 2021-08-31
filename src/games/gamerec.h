@@ -38,8 +38,6 @@ struct Gr_tab {
 enum { GR_INIT = 1, GR_GROW = 2 };
 
 /* funcs */
-int run_game(int id);
-
 void grp_free(game_t *Game);
 void grt_free(game_tab_t Game);
 
@@ -61,8 +59,8 @@ int grcmp(game_t src, game_t dst);
 game_t *grcpy(game_t *dst, game_t *src);
 game_t *grdup(game_t *rec);
 
-const char *gr_play_time_human(game_t *gr);
+const char *play_time_human(time_t time);
 int         gr_play_time_append(game_t *gr, time_t time);
-const char *gr_last_time_human(game_t *gr);
+const char *last_time_human(time_t time);
 
 #endif

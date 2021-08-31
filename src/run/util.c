@@ -1,4 +1,6 @@
 #include <gdk/gdk.h>
+#include <libgen.h>
+#include <time.h>
 
 #include "run.h"
 #include "../utils/eprintf.h"
@@ -7,8 +9,22 @@
 #include "../db/dbman.h"
 #include "../utils/util.h"
 
+struct run_game_info {
+	game_t *gr;
+	pid_t pid;
+	time_t start_time;
+	time_t end_time;
+	unsigned int done: 1;
+};
+
+/* vars */
+static struct run_game_info rgi;
+
+/* funcs */
 static void init_game_tab(void);
 static const char *game_icon_default = "assets/game-icon.png";
+static void shutup_game(int sig);
+GtkTreeIter gtk_tree_model_search_by_name_col(GtkTreeModel *liststore, char *find);
 
 static void
 init_game_tab(void)
@@ -22,14 +38,129 @@ init_game_tab(void)
 	}
 }
 
+static void
+shutup_game(int sig)
+{
+	rgi.end_time = time(NULL);
+	time_t diff = difftime(rgi.end_time, rgi.start_time);
+	gr_play_time_append(rgi.gr, diff);
+
+	gr_save(rgi.gr);
+
+	GtkTreeIter iter = gtk_tree_model_search_by_name_col(gapp.game_list_store, rgi.gr->name);
+	tree_store_row_change_val(gapp.game_list_store, iter, rgi.gr);
+
+	rgi.gr = NULL;
+	rgi.pid = -1;
+	rgi.done = 1;
+}
+
+void
+init_rgi(void)
+{
+	rgi.done = 1;
+}
+
+GtkTreeIter
+gtk_tree_model_search_by_name_col(GtkTreeModel *liststore, char *find)
+{
+	GtkTreeIter iter;
+	gboolean valid;
+	gchar *name;
+
+	valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(liststore), &iter);
+
+	while (valid)
+	{
+		gtk_tree_model_get(liststore, &iter, NAME_C, &name,  -1);
+		if (strcmp(name, find) == 0) {
+			g_free(name);
+			return iter;
+		}
+
+		g_free(name);
+
+		valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(liststore), &iter);
+	}
+
+	return iter;
+}
+
+/* run some game with id 
+ * returns:
+ * 		1  - game is running
+ * 		0  - child stoped
+ * 		-1 - some error or another game already running */
+int
+run_game(int id)
+{
+	if (!rgi.done) {
+		return -1;
+	}
+
+	rgi.done = 0;
+	rgi.gr = grt_find(id);
+	char *path = rgi.gr->start_point;
+	char run[strlen(path) + 3];
+	esnprintf(run, sizeof(run), "/.%s", path);
+
+	/* last time setup */
+	rgi.gr->last_time = time(NULL);
+	/* start time */
+	rgi.start_time = time(NULL);
+
+	rgi.pid = fork();
+	switch (rgi.pid) {
+		case 0: //child
+		{
+			/* int devnull = open(, O_CREAT|O_WRONLY|O_TRUNC, /1* open or create and open with 600 mask *1/ */
+			/* S_IRWXU); */
+			/* if (!devnull) { */
+			/* } */
+			/* dup2(devnull, 1); */
+			/* dup2(devnull, 2); */
+
+			int argc = rgi.gr->start_argv ? 2 : 3;
+
+			char *argv[argc];
+			argv[0] = basename(run); //TODO this non freeding
+			if (argc == 2) {
+				argv[1] = NULL;
+			} else if (argc == 3) {
+				argv[1] = rgi.gr->start_argv;
+				argv[2] = NULL;
+			}
+
+			if (execv(run, argv) < 0) {
+				exit(1);
+			}
+
+			return 1;
+		}
+
+		default: //parent
+		{
+			signal(SIGCHLD, shutup_game);
+		}
+		break;
+
+		case -1:
+			//log error TODO
+			warn("fork:");
+			return -1;
+	}
+
+	return 0;
+}
+
 int
 tree_store_row_change_val(GtkTreeModel *model, GtkTreeIter iter, game_t *gr)
 {
 	gtk_list_store_set(GTK_LIST_STORE(model), &iter, //TODO
 					   /* ICON_C, gr->icon, */
 					   NAME_C, gr->name,
-					   LAST_TIME_C, gr_last_time_human(gr),
-					   PLAY_TIME_C, gr_play_time_human(gr),
+					   LAST_TIME_C, gr->last_time,
+					   PLAY_TIME_C, play_time_human(gr->play_time),
 					   GENER_C, gr->gener ? gr->gener : "",
 					   -1);
 	return 0;
@@ -39,7 +170,7 @@ int
 get_game_id_from_tree_model(GtkTreeModel *model, GtkTreeIter iter)
 {
 	guint id;
-	gtk_tree_model_get(model, &iter, ID_C, &id,  -1);
+	gtk_tree_model_get(model, &iter, ID_C, &id, -1);
 
 	return id;
 }
@@ -55,8 +186,8 @@ add_new_game(GtkListStore *store, game_t *gr)
 	gtk_list_store_set(store, &iter, ICON_C, pixbuf,
 									 NAME_C, gr->name,
 									 GENER_C, gr->gener ? gr->gener : "",
-									 LAST_TIME_C, gr_last_time_human(gr),
-									 PLAY_TIME_C, gr_play_time_human(gr),
+									 LAST_TIME_C, gr->last_time,
+									 PLAY_TIME_C, play_time_human(gr->play_time),
 									 ID_C, gr->id,
 									 -1);
 	g_object_unref(pixbuf);

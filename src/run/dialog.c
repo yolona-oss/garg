@@ -245,6 +245,7 @@ end_add_new_game_dialog(GtkWidget *dialog,
 			if (gr) {
 				gr->start_argv = (char*)gtk_entry_buffer_get_text(new_game.bgame_start_arg);
 				add_new_game_short(gr);
+				gr_save(gr);
 				gtk_window_destroy(GTK_WINDOW(dialog));
 			} else {
 				quick_message(GTK_WINDOW(dialog), "Cant initialize game!");

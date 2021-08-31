@@ -49,10 +49,31 @@ game_list_sort_func(GtkTreeModel* model,
 	return TRUE;
 }
 
+static void
+last_time_cell_data_func(GtkTreeViewColumn *col,
+								GtkCellRenderer   *renderer,
+							    GtkTreeModel      *model,
+								GtkTreeIter       *iter,
+								gpointer           user_data)
+{
+	time_t last_time;
+	gchar  buf[516];
+
+	gtk_tree_model_get(model, iter, LAST_TIME_C, &last_time, -1);
+
+	if ((int)last_time == 0) {
+		g_snprintf(buf, sizeof(buf), "Never");
+	} else {
+		g_snprintf(buf, sizeof(buf), "%s", last_time_human(last_time));
+	}
+
+	g_object_set(renderer, "text", buf, NULL);
+}
+
 static GtkTreeModel *
 make_model(GtkTreeView *list)
 {
-	GtkCellRenderer *renderer, *renderer_pixbuf;
+	GtkCellRenderer *renderer, *renderer_pixbuf, *last_time_renderer;
 	GtkTreeViewColumn  *icon_col,
 					   *name_col,
 					   *gener_col,
@@ -64,6 +85,8 @@ make_model(GtkTreeView *list)
 	renderer = gtk_cell_renderer_text_new();
 	renderer_pixbuf = gtk_cell_renderer_pixbuf_new();
 
+	/* -- # ICON # -- */
+
 	icon_col = gtk_tree_view_column_new_with_attributes("",
 			renderer_pixbuf, "pixbuf", ICON_C, NULL);
 	gtk_tree_view_column_set_sizing(GTK_TREE_VIEW_COLUMN(icon_col),
@@ -71,25 +94,39 @@ make_model(GtkTreeView *list)
 	gtk_tree_view_column_set_fixed_width(GTK_TREE_VIEW_COLUMN(icon_col), icon_size_w);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list), icon_col);
 
+	/* -- # NAME # -- */
+
 	name_col = gtk_tree_view_column_new_with_attributes("Name",
 			renderer, "text", NAME_C, NULL);
 	gtk_tree_view_column_set_sort_column_id(name_col, NAME_C);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list), name_col);
+
+	/* -- # GENER # -- */
 
 	gener_col = gtk_tree_view_column_new_with_attributes("Gener",
 			renderer, "text", GENER_C, NULL);
 	gtk_tree_view_column_set_sort_column_id(gener_col, GENER_C);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list), gener_col);
 
+	/* -- # LAST PLAYED # -- */
+
+	last_time_renderer = gtk_cell_renderer_text_new();
+
 	last_time_col = gtk_tree_view_column_new_with_attributes("Last Played",
-			renderer, "text", LAST_TIME_C, NULL);
+			last_time_renderer, "text", LAST_TIME_C, NULL);
 	gtk_tree_view_column_set_sort_column_id(last_time_col, LAST_TIME_C);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list), last_time_col);
+
+	gtk_tree_view_column_set_cell_data_func(last_time_col, last_time_renderer, last_time_cell_data_func, NULL, NULL);
+
+	/* -- # PLAY TIME # -- */
 
 	play_time_col = gtk_tree_view_column_new_with_attributes("Play Time",
 			renderer, "text", PLAY_TIME_C, NULL);
 	gtk_tree_view_column_set_sort_column_id(play_time_col, PLAY_TIME_C);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(list), play_time_col);
+
+	/* -- # ID # -- */
 
 	id_col = gtk_tree_view_column_new_with_attributes("ID",
 			renderer, "text", ID_C, NULL);
@@ -101,7 +138,7 @@ make_model(GtkTreeView *list)
 			GDK_TYPE_PIXBUF,
 			G_TYPE_STRING,
 			G_TYPE_STRING,
-			G_TYPE_STRING,
+			G_TYPE_INT,
 			G_TYPE_STRING,
 			G_TYPE_UINT);
 
@@ -114,6 +151,7 @@ run(GtkApplication* app,
 {
 	gtk_init();
 	load_css();
+	init_rgi();
 
 	/* -- # Shortcuts # -- */
 	/* GtkShortcutTrigger *trigger = gtk_shortcut_trigger_parse_string("<Control>q"); */
@@ -125,11 +163,11 @@ run(GtkApplication* app,
 	gapp.main_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
 	gtk_window_set_child(gapp.window, GTK_WIDGET(gapp.main_box));
 
-	/* -- # Setuping header # -- */
+	/* -- # Setuping header bar # -- */
 	gapp.header.bar = GTK_HEADER_BAR(gtk_header_bar_new());
 	gtk_window_set_titlebar(gapp.window, GTK_WIDGET(gapp.header.bar));
 
-	/* -- # search bar # -- */
+	/* -- # Search bar # -- */
 	gapp.header.search_bar = GTK_SEARCH_BAR(gtk_search_bar_new());
 	gapp.header.search_entry = GTK_SEARCH_ENTRY(gtk_search_entry_new());
 	gtk_search_bar_connect_entry(gapp.header.search_bar, GTK_EDITABLE(gapp.header.search_entry));
@@ -247,7 +285,7 @@ run(GtkApplication* app,
 	gtk_widget_set_vexpand(GTK_WIDGET(gapp.games_window), TRUE);
 	gtk_box_prepend(gapp.game_list_wrapper, GTK_WIDGET(gapp.games_window));
 
-	/* Initializing game list */
+	/* -- # Initializing game list # -- */
 	gapp.game_list = GTK_TREE_VIEW(gtk_tree_view_new());
 	gapp.game_list_store = make_model(gapp.game_list);
 	gtk_tree_view_set_model(gapp.game_list, gapp.game_list_store);
@@ -274,11 +312,16 @@ run(GtkApplication* app,
 
 	/* gtk_widget_set_focus_child(window, game_list); */
 
-	if (!gtk_widget_get_visible(GTK_WIDGET(gapp.window)))
+	if (!gtk_widget_get_visible(GTK_WIDGET(gapp.window))) {
 		gtk_widget_show(GTK_WIDGET(gapp.window));
-	else
+	} else {
 		gtk_window_destroy(gapp.window);
+	}
 	gtk_widget_hide(GTK_WIDGET(gapp.game_info_bar.box));
+
+	while (!done) {
+		g_main_context_iteration(NULL, TRUE);
+	}
 
 	return 0;
 }

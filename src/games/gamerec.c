@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
-#include <libgen.h>
 #include <assert.h>
 
 #include <unistd.h>
@@ -20,91 +19,11 @@
 
 /* vars */
 extern game_tab_t gr_tab;
-pid_t g_game_pid;
 
 /* funcs */
 static unsigned int gr_make_id(const char *);
 static void gr_set_props(game_t *grp, game_prop_t prop);
 static game_prop_t gr_get_props(game_t *grp);
-
-/* run some game with id 
- * returns:
- * 		1  - game is running
- * 		0  - child stoped
- * 		-1 - some error */
-int
-run_game(int id)
-{
-	game_t *gr = grt_find(id);
-	char *path = gr->start_point;
-	char run[strlen(path) + 3];
-
-	esnprintf(run, sizeof(run), "/.%s", path);
-	time_t cur_time = time(NULL);
-	time_t end_time = -1;
-
-	/* last time setup */
-	gr->last_time = time(NULL);
-
-	g_game_pid = fork();
-	switch (g_game_pid) {
-		case 0: //child
-		{
-			/* setsid(); */
-
-			/* int devnull = open(, O_CREAT|O_WRONLY|O_TRUNC, /1* open or create and open with 600 mask *1/ */
-			/* S_IRWXU); */
-			/* if (!devnull) { */
-			/* 	/1* status text handler TODO *1/ */
-			/* 	break; */
-			/* } */
-			/* dup2(devnull, 1); */
-			/* dup2(devnull, 2); */
-
-			/* char *argv[2] = { run, gr->start_argv, NULL}; */
-			char *argv[] = { basename(run), NULL};
-
-			execv(run, argv);
-			return 1;
-		}
-		break;
-
-		default: //parent
-		{
-			int status = 0;
-			pid_t wpid;
-
-			do {
-				wpid = waitpid(g_game_pid, &status, WUNTRACED);
-
-				if (wpid == -1) {
-					warn("waitpid: ");
-					break;
-				}
-
-				if (WIFEXITED(status)) {
-					if (WEXITSTATUS(status)) {
-					}
-				} else {
-				}
-
-			} while (!WIFEXITED(status) && !WIFSIGNALED(status));
-
-			end_time = time(NULL);
-			time_t diff = difftime(end_time, cur_time); /* with cpu word size eq 64 you can play(with recirding) only 292,471,208,677.5 year :__D */
-			gr_play_time_append(gr, diff);
-		}
-		break;
-
-		case -1:
-			//log error TODO
-			/* exit(EXIT_FAILURE); */
-			return -1;
-			break;
-	}
-
-	return 0;
-}
 
 void
 grp_free(game_t *grp)
@@ -174,7 +93,7 @@ gr_print(game_t *Game)
 	if (Game) {
 		printf("\n##########################################\n");
 		printf(" id          - %d\n", Game->id);
-		/* printf(" play time   - %d\n", Game->play_time); */
+		printf(" play time   - %s\n", play_time_human(Game->play_time));
 		printf(" name        - %s\n", Game->name);
 		printf(" icon        - %s\n", Game->icon);
 		printf(" gener       - %s\n", Game->gener);
@@ -274,7 +193,7 @@ gr_init(const char *name, const char *location, const char *sp, const char *unin
 	grp->id        = gr_make_id(name);
 
 	grp->play_time = 0;
-	grp->last_time = -1;
+	grp->last_time = 0;
 
 	grp->name        = estrdup(name);
 	grp->location    = estrdup(location);
@@ -451,9 +370,9 @@ grdup(game_t *gr)
 }
 
 const char *
-gr_play_time_human(game_t *gr)
+play_time_human(time_t time)
 {
-	time_t min = gr->play_time/60;
+	time_t min = time/60;
 	if (min < 120) {
 		return bprintf("%ld mins", min);
 	} else {
@@ -470,11 +389,65 @@ gr_play_time_append(game_t *gr, time_t time)
 	return 0;
 }
 
-const char *
-gr_last_time_human(game_t *gr)
+static const char *
+month_name(int n)
 {
-	char *last_time = gr->last_time ? ctime(&gr->last_time) : "";
-	if (last_time[0] != '\0') str_del_last_sym(last_time);
+	switch (n) {
+		case 1:
+			return bprintf("January");
+			break;
+		case 2:
+			return bprintf("February");
+			break;
+		case 3:
+			return bprintf("March");
+			break;
+		case 4:
+			return bprintf("April");
+			break;
+		case 5:
+			return bprintf("May");
+			break;
+		case 6:
+			return bprintf("June");
+			break;
+		case 7:
+			return bprintf("July");
+			break;
+		case 8:
+			return bprintf("August");
+			break;
+		case 9:
+			return bprintf("September");
+			break;
+		case 10:
+			return bprintf("October");
+			break;
+		case 11:
+			return bprintf("November");
+			break;
+		case 12:
+			return bprintf("December");
+			break;
+	}
 
-	return last_time;
+	return NULL;
+}
+
+const char *
+last_time_human(time_t last_time)
+{
+	struct tm *now_tm, *last_time_tm;
+	time_t now = time(NULL);
+	now_tm = localtime(&now);
+	last_time_tm = localtime(&last_time);
+	
+	char ret[1000];
+	if (now_tm->tm_year == last_time_tm->tm_year) {
+		esnprintf(ret, sizeof(ret), "%d %s", last_time_tm->tm_mday, month_name(last_time_tm->tm_mon));
+	} else {
+		esnprintf(ret, sizeof(ret), "%d %s %d", last_time_tm->tm_mday, month_name(last_time_tm->tm_mon), last_time_tm->tm_year);
+	}
+
+	return bprintf("%s", ret);
 }
