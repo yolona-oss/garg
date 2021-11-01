@@ -21,7 +21,7 @@ make install
 for installing this in your PC.
 <a name="dependenses"></a>
 ### Dependenses
-+ GTK-3.0
++ GTK-4.0
 + SQLite
 
 <a name="configuration"></a>
